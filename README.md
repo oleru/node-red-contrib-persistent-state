@@ -30,6 +30,13 @@ logging of missing, corrupt, recovered and defaulted values.
 
 ## Installation From GitHub
 
+To replace the original package while keeping existing flows compatible:
+
+```sh
+npm remove node-red-contrib-state
+npm install github:oleru/node-red-contrib-persistent-state#v0.1.0
+```
+
 For an installation pinned to this branch:
 
 ```sh
