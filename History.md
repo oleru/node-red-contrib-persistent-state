@@ -1,3 +1,9 @@
+0.2.0 - Unreleased
+==================
+
+  * Changed get/set shared-state node editor color from light green to a
+    sharper green so the Torka-maintained fork is easier to identify in flows.
+
 1.6.1 - 01/09/2022
 ==================
 
