@@ -17,11 +17,17 @@ The fork keeps the existing Node-RED node type names and public message/state
 shape as the initial compatibility contract for Torka, Sealight, Neva and MDC
 flows.
 
-The first implementation branch is:
+The baseline branch is:
 
 ```text
 codex/persistent-state-baseline
 ```
 
-The first hardening work should be developed from this baseline, with runtime
-changes documented in `History.md` and release tags used for installation.
+The `0.2.0` hardening work is developed on:
+
+```text
+codex/v0.2.0
+```
+
+Runtime changes should be documented in `History.md`, and release tags should be
+used for production installation once a version is qualified.

@@ -34,19 +34,19 @@ To replace the original package while keeping existing flows compatible:
 
 ```sh
 npm remove node-red-contrib-state
-npm install github:oleru/node-red-contrib-persistent-state#v0.1.0
+npm install git+ssh://git@github.com/oleru/node-red-contrib-persistent-state.git#codex/v0.2.0
 ```
 
-For an installation pinned to this branch:
+For an installation pinned to the current development branch:
 
 ```sh
-npm install git+ssh://git@github.com/oleru/node-red-contrib-persistent-state.git#codex/persistent-state-baseline
+npm install git+ssh://git@github.com/oleru/node-red-contrib-persistent-state.git#codex/v0.2.0
 ```
 
 For a tagged release:
 
 ```sh
-npm install github:oleru/node-red-contrib-persistent-state#v0.1.0
+npm install github:oleru/node-red-contrib-persistent-state#v0.2.0
 ```
 
 Restart Node-RED after installation.

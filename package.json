@@ -4,7 +4,7 @@
   "contributors": [
     "Kronborg Solutions / Torka maintainers - github.com/oleru"
   ],
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Torka/MDC-maintained persistent shared-state nodes for Node-RED",
   "license": "MIT",
   "homepage": "https://github.com/oleru/node-red-contrib-persistent-state",
