@@ -28,6 +28,9 @@ Planned hardening work includes monotonic save gating, atomic file replacement,
 validated recovery, last-known-good generations for critical state, and explicit
 logging of missing, corrupt, recovered and defaulted values.
 
+See [Persistent Value Store Design](docs/PERSISTENT_VALUE_STORE_DESIGN.md) for
+the `0.2.0` storage design plan.
+
 ## Installation From GitHub
 
 To replace the original package while keeping existing flows compatible:

@@ -3,6 +3,8 @@
 
   * Changed get/set shared-state node editor color from light green to a
     sharper green so the Torka-maintained fork is easier to identify in flows.
+  * Added a design plan for splitting per-state config from redundant
+    checksum-protected runtime value storage.
 
 1.6.1 - 01/09/2022
 ==================
