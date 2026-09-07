@@ -1,5 +1,56 @@
-Shared state with persistence, notification, and history
-========================================================
+node-red-contrib-persistent-state
+=================================
+
+Torka/MDC-maintained persistent shared-state nodes for Node-RED.
+
+This repository is forked from
+[lorenwest/node-red-contrib-state](https://github.com/lorenwest/node-red-contrib-state),
+starting at upstream commit
+[`61e3964a03d92a0527c7ea353b6f17c8f610e23b`](https://github.com/lorenwest/node-red-contrib-state/commit/61e3964a03d92a0527c7ea353b6f17c8f610e23b)
+(`node-red-contrib-state` 1.6.1).
+
+The first goal is to keep the existing Node-RED node types and flow-facing message
+shape compatible while hardening persistence for isolated, power-cycled MDC
+installations.
+
+## Project Scope
+
+This fork is intended to:
+
+- preserve the existing `shared-state`, `get-shared-state`, and `set-shared-state`
+  node types;
+- remain compatible with existing Torka, Sealight, Neva and MDC flows during the
+  first migration phase;
+- document all material changes from the upstream baseline;
+- retain the original MIT license and copyright notice.
+
+Planned hardening work includes monotonic save gating, atomic file replacement,
+validated recovery, last-known-good generations for critical state, and explicit
+logging of missing, corrupt, recovered and defaulted values.
+
+## Installation From GitHub
+
+For an installation pinned to this branch:
+
+```sh
+npm install git+ssh://git@github.com/oleru/node-red-contrib-persistent-state.git#codex/persistent-state-baseline
+```
+
+For a tagged release:
+
+```sh
+npm install github:oleru/node-red-contrib-persistent-state#v0.1.0
+```
+
+Restart Node-RED after installation.
+
+Do not install this package alongside the original `node-red-contrib-state` in the
+same Node-RED user directory, because both packages currently register the same
+Node-RED node types.
+
+## Upstream README
+
+The original upstream README content follows.
 
 This contributes [Node-RED](http://nodered.org/) nodes for defining logical state,
 sharing that state across nodes, tracking history, and triggering flows based on change.
@@ -108,4 +159,6 @@ discussion for further information.
 
 ## License
 
-MIT License. See [LICENSE.txt](https://raw.githubusercontent.com/lorenwest/node-red-contrib-state/master/LICENSE.txt) for more details.
+MIT License. See [LICENSE.txt](LICENSE.txt), the
+[upstream license](https://raw.githubusercontent.com/lorenwest/node-red-contrib-state/master/LICENSE.txt),
+and the [MIT license reference](https://opensource.org/license/mit) for more details.
