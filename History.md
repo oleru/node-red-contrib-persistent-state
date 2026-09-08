@@ -1,4 +1,4 @@
-0.3.0 - Unreleased
+0.3.0 - 2026-09-08
 ==================
 
   * Make state file read/write failures visible and distinguish missing files
