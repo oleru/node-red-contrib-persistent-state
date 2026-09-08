@@ -2,6 +2,11 @@
 ==================
 
   * Start next development cycle.
+  * Add an internal persistent value-store module with canonical JSON,
+    SHA-256 checksum wrapping, synced staged writes, `active.json` /
+    `previous.json` generations, sequence-based recovery, and isolated tests.
+  * Validate that persisted values are JSON-compatible, including scalar
+    values, arrays, and nested object trees.
 
 0.3.0 - 2026-09-08
 ==================

@@ -28,6 +28,9 @@ Planned hardening work includes monotonic save gating, atomic file replacement,
 validated recovery, last-known-good generations for critical state, and explicit
 logging of missing, corrupt, recovered and defaulted values.
 
+`v0.4.0` development has started with an internal `lib/persistentStore.js`
+module and isolated tests. It is not yet wired into the Node-RED state runtime.
+
 See [Persistent Value Store Design](docs/PERSISTENT_VALUE_STORE_DESIGN.md) for
 the storage design plan. See [Timestamp Usage Analysis](docs/TIMESTAMP_USAGE_ANALYSIS.md)
 for timestamp, history, and `saveInterval` behavior.

@@ -102,6 +102,22 @@ finishing an interrupted two-phase commit.
 The value file should contain only the current value and metadata needed to
 validate and order generations.
 
+`value` and `prev` must support all JSON-compatible values used by Node-RED
+flows:
+
+- `null`
+- strings
+- finite numbers
+- booleans
+- arrays
+- nested plain-object JSON trees
+
+Values that JSON cannot preserve safely, such as `undefined`, functions,
+symbols, `NaN`, `Infinity`, class instances, dates as objects, and circular
+references, should be rejected before writing the value generation. If a flow
+needs to persist those concepts, it should convert them into explicit JSON
+values first, for example an ISO timestamp string instead of a `Date` object.
+
 Suggested value payload before checksum wrapping:
 
 ```json
@@ -175,7 +191,7 @@ Preferred write flow:
 4. Write wrapped payload to `staged.json.tmp`.
 5. Flush the file contents.
 6. Close the staged file.
-7. Rename current `active.json` to `previous.json.tmp`.
+7. Copy current `active.json` to `previous.json.tmp`, when it exists.
 8. Rename `staged.json.tmp` to `active.json`.
 9. Flush the containing directory where the platform supports it.
 10. Rename `previous.json.tmp` to `previous.json`.
@@ -185,10 +201,11 @@ On Windows, POSIX-style directory `fsync` is not always practical from Node.js.
 The implementation should still use same-directory writes and renames, and it
 should document the exact durability guarantee per platform.
 
-If a failure happens before `active.json` is replaced, the old active generation
-must remain usable. If a failure happens after `active.json` is replaced but
-before `previous.json` is updated, startup recovery must still accept the new
-active generation.
+The old active generation is copied instead of renamed before replacement. This
+keeps `active.json` usable if power is lost before the staged generation becomes
+the new active generation. If a failure happens after `active.json` is replaced
+but before `previous.json` is updated, startup recovery must still accept the
+new active generation.
 
 ## Startup Recovery
 
@@ -348,6 +365,9 @@ Responsibilities:
 - same-directory staged write;
 - active/previous generation recovery;
 - legacy import helpers.
+
+Implemented in `v0.4.0` as `lib/persistentStore.js` with isolated
+`node:test` coverage. This module is not yet wired into the Node-RED state node.
 
 ### Phase 2: State Node Integration
 
