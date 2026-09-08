@@ -1,3 +1,8 @@
+0.4.0 - Unreleased
+==================
+
+  * Start next development cycle.
+
 0.3.0 - 2026-09-08
 ==================
 
