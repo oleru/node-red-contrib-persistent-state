@@ -1,3 +1,9 @@
+0.5.0 - Unreleased
+==================
+
+  * Start next development cycle for per-state directory layout and explicit
+    migration fallback.
+
 0.4.0 - 2026-09-08
 ==================
 
