@@ -8,13 +8,14 @@ Status: Accepted for `v0.2.0` implementation planning
 
 Keep the existing `saveInterval` meaning for standard state variables.
 
-Add an explicit opt-in persistence policy for position-like values instead of
-reusing `saveInterval = 0` as a special position mode.
+Add explicit opt-in persistence policies for data categories that need behavior
+beyond standard configuration persistence. Do not reuse `saveInterval = 0` as a
+hidden signal for any specialized policy.
 
 Proposed modes:
 
 - `standard`
-- `position`
+- `sampledNumeric`
 
 `standard` remains compatible with the original component:
 
@@ -22,14 +23,14 @@ Proposed modes:
 - Use `saveInterval` as the minimum interval between disk writes.
 - `saveInterval = 0` means persist every accepted changed value.
 
-`position` is for physical position feedback such as:
+`sampledNumeric` is for measured numeric feedback where values may update often
+or oscillate slightly, but where persistence should represent useful
+checkpoints instead of every sample. Examples include physical position,
+heading, level, pressure, or other numeric process values.
 
-- `Horizontal_pos_act`
-- `Vertical_pos_act`
+The sampled numeric policy should support:
 
-The position policy should support:
-
-- `minPersistDelta`, for example `0.5` degrees.
+- `minPersistDelta`, in the unit of the value.
 - `checkpointIntervalMs`, for example `5000`.
 - `quietPersistDelayMs`, for example `10000`.
 - Comparison against last successfully persisted value, not only the previous
@@ -46,30 +47,42 @@ They should not inherit numeric delta logic. For these variables, a small value
 change may be meaningful, and for boolean/string values a numeric threshold does
 not make sense.
 
-Physical position values are different. They can receive frequent updates while
-the searchlight moves, and can also oscillate slightly because of AB counter
-behavior, sea motion, wind, or vibration. These values need controlled
-checkpointing rather than immediate write-on-every-change or delayed write only
-after complete quiet.
+Measured numeric feedback values are different. They can receive frequent
+updates while the physical system changes, and can also oscillate slightly
+because of sensors, counters, vibration, noise, environmental movement, or
+rounding. These values need controlled checkpointing rather than immediate
+write-on-every-change or delayed write only after complete quiet.
+
+The original discussion used searchlight position as a concrete case, but the
+decision is about data categories:
+
+- Configuration and register-like values use `standard`.
+- Sampled/measured numeric feedback can opt in to `sampledNumeric`.
+- Counters and statistics can usually stay `standard` and use a longer
+  `saveInterval` if they are not operationally critical.
 
 ## Consequences
 
 Existing flows stay compatible by default.
 
-Only variables explicitly configured with `position` policy receive the new
+Only variables explicitly configured with a specialized policy receive
 delta/checkpoint behavior.
 
-The first expected production candidates are:
+The first expected production candidates from the MDC2022 raspPI case are:
 
 - `Horizontal_pos_act`
 - `Vertical_pos_act`
 
-`myHoursOfUseLamp` should remain standard state. It may be slowed down by
-increasing `saveInterval`, because it is not operationally critical.
+Those are examples of physical position feedback and should not define the
+whole feature.
+
+The MDC2022 `myHoursOfUseLamp` case is an example of a non-critical statistic.
+It should remain standard state and can be slowed down by increasing
+`saveInterval`.
 
 ## Implementation Notes
 
-Position policy should write when both conditions are true:
+The sampled numeric policy should write when both conditions are true:
 
 - Absolute difference between current value and last successfully persisted
   value is at least `minPersistDelta`.
