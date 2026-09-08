@@ -99,10 +99,10 @@ finishing an interrupted two-phase commit.
 
 ## Value File Format
 
-The value file should contain only the current value and metadata needed to
-validate and order generations.
+The value file should contain only the current value and the dynamic metadata
+needed to validate and order generations.
 
-`value` and `prev` must support all JSON-compatible values used by Node-RED
+`value` and `previous` must support all JSON-compatible values used by Node-RED
 flows:
 
 - `null`
@@ -118,48 +118,26 @@ references, should be rejected before writing the value generation. If a flow
 needs to persist those concepts, it should convert them into explicit JSON
 values first, for example an ISO timestamp string instead of a `Date` object.
 
-Suggested value payload before checksum wrapping:
+Compact value generation:
 
 ```json
 {
-  "schema": "persistent-state.value.v1",
-  "name": "myNumber",
   "value": 7,
-  "type": "num",
+  "previous": 6,
   "sequence": 42,
-  "bootId": "8ec94898-65e0-4540-85f7-02fdbffdfb09",
-  "writtenAt": 1788787909167
-}
-```
-
-Suggested stored file:
-
-```json
-{
-  "payload": {
-    "schema": "persistent-state.value.v1",
-    "name": "myNumber",
-    "value": 7,
-    "type": "num",
-    "sequence": 42,
-    "bootId": "8ec94898-65e0-4540-85f7-02fdbffdfb09",
-    "writtenAt": 1788787909167
-  },
-  "checksum": {
-    "algorithm": "sha256",
-    "encoding": "hex",
-    "value": "..."
-  }
+  "timestamp": 1788787909167,
+  "checksum": "..."
 }
 ```
 
 The checksum must be calculated from a canonical JSON representation of
-`payload`, not from pretty-printed file bytes. The first implementation can use a
-stable stringify helper with sorted object keys.
+all fields except `checksum`, not from pretty-printed file bytes. The first
+implementation uses a stable stringify helper with sorted object keys.
 
-`writtenAt` is informational only. It must not be used as the primary ordering
-key because MDC installations can restart with a wall clock that moves
-backwards.
+Static metadata such as schema, state name, and data type belongs in the state
+configuration and path context, not in every value generation. Recovery still
+validates old wrapped `payload`/`checksum` generations from early `v0.4.0`
+development so existing local test files can migrate forward on the next write.
 
 ## Ordering
 
@@ -170,7 +148,7 @@ Rules:
 - Increment `sequence` after a value has been accepted in memory.
 - Persist the accepted value with the next sequence.
 - On startup, pick the valid generation with the highest sequence.
-- If two valid generations have the same sequence but different payloads, treat
+- If two valid generations have the same sequence but different values, treat
   that as a recovery warning and prefer `active.json`.
 - Do not compare wall-clock timestamps to decide which value is newest.
 
@@ -187,8 +165,8 @@ Preferred write flow:
 
 1. Validate and type-convert the new value.
 2. Update in-memory state.
-3. Build a new value payload with incremented `sequence`.
-4. Write wrapped payload to `staged.json.tmp`.
+3. Build a new compact value generation with incremented `sequence`.
+4. Write the generation to `staged.json.tmp`.
 5. Flush the file contents.
 6. Close the staged file.
 7. Copy current `active.json` to `previous.json.tmp`, when it exists.
@@ -237,9 +215,9 @@ Validation must distinguish:
 - unreadable file;
 - invalid JSON;
 - checksum mismatch;
-- wrong schema;
-- wrong state name;
-- wrong data type;
+- unsupported legacy schema;
+- wrong legacy state name;
+- wrong legacy data type;
 - value outside configured range;
 - recovered from previous generation;
 - defaulted.
@@ -307,9 +285,9 @@ Use Node.js `crypto.createHash("sha256")`.
 
 Checksum scope:
 
-- Include the canonical payload.
-- Exclude the checksum object itself.
-- Include `schema`, `name`, `value`, `type`, `sequence` and `bootId`.
+- Canonicalize the compact generation with sorted object keys.
+- Exclude the `checksum` field itself.
+- Include `value`, `previous`, `sequence`, and `timestamp`.
 
 Checksum failure must make that generation invalid. It must never silently fall
 back to default while a valid previous generation exists.

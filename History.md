@@ -12,6 +12,8 @@
   * Prefer valid compact value generations on startup, migrate legacy state
     files into the compact store, and recover from `previous.json` when
     `active.json` is corrupt.
+  * Slim the value generation file to dynamic fields only: `value`,
+    `previous`, `sequence`, `timestamp`, and a flat SHA-256 `checksum`.
 
 0.3.0 - 2026-09-08
 ==================

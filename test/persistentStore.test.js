@@ -26,25 +26,54 @@ test('canonicalStringify sorts object keys recursively', function() {
   );
 });
 
-test('wrapPayload validates with checksum', function() {
+test('wrapPayload creates flat compact generation with checksum', function() {
   let payload = store.buildPayload({
-    name: 'myNumber',
     value: 7,
-    prev: 6,
+    previous: 6,
     timestamp: 1000,
-    type: 'num',
     sequence: 1,
-    bootId: 'boot-a',
-    writtenAt: 1000,
   });
   let wrapped = store.wrapPayload(payload);
+  assert.deepEqual(Object.keys(wrapped).sort(), ['checksum', 'previous', 'sequence', 'timestamp', 'value']);
+  assert.equal(typeof wrapped.checksum, 'string');
   let valid = store.validateWrappedGeneration(wrapped, {name: 'myNumber', type: 'num'}, 'active');
   assert.equal(valid.ok, true);
 
-  wrapped.payload.value = 8;
+  wrapped.value = 8;
   let invalid = store.validateWrappedGeneration(wrapped, {name: 'myNumber', type: 'num'}, 'active');
   assert.equal(invalid.ok, false);
   assert.equal(invalid.reason, 'checksum-mismatch');
+});
+
+test('reader accepts previous wrapped payload/checksum generation format', function() {
+  let legacyPayload = {
+    schema: store.VALUE_SCHEMA,
+    name: 'myNumber',
+    value: 9,
+    prev: 8,
+    timestamp: 3000,
+    type: 'num',
+    sequence: 3,
+    bootId: 'boot-old',
+    writtenAt: 3001,
+  };
+  let legacyWrapped = {
+    payload: legacyPayload,
+    checksum: {
+      algorithm: 'sha256',
+      encoding: 'hex',
+      value: store.checksumPayload(legacyPayload),
+    },
+  };
+
+  let valid = store.validateWrappedGeneration(legacyWrapped, {name: 'myNumber', type: 'num'}, 'active');
+  assert.equal(valid.ok, true);
+  assert.deepEqual(valid.payload, {
+    value: 9,
+    previous: 8,
+    timestamp: 3000,
+    sequence: 3,
+  });
 });
 
 test('writeGeneration writes active generation and recovers it', async function(t) {
@@ -53,7 +82,7 @@ test('writeGeneration writes active generation and recovers it', async function(
     valueDir,
     name: 'myNumber',
     value: 7,
-    prev: 6,
+    previous: 6,
     timestamp: 2000,
     type: 'num',
     sequence: 1,
@@ -61,10 +90,15 @@ test('writeGeneration writes active generation and recovers it', async function(
     writtenAt: 2000,
   });
 
+  let paths = store.getStorePaths(valueDir);
+  let activeFile = JSON.parse(await fs.readFile(paths.active, 'utf8'));
+  assert.deepEqual(Object.keys(activeFile).sort(), ['checksum', 'previous', 'sequence', 'timestamp', 'value']);
+
   let recovered = await store.recover({valueDir, name: 'myNumber', type: 'num'});
   assert.equal(recovered.status, 'recovered');
   assert.equal(recovered.source, 'active');
   assert.equal(recovered.payload.value, 7);
+  assert.equal(recovered.payload.previous, 6);
   assert.equal(recovered.payload.sequence, 1);
 });
 
@@ -94,7 +128,7 @@ test('value payload supports JSON-compatible scalar and tree values', async func
       valueDir,
       name: 'myNumber',
       value: values[i].value,
-      prev: i === 0 ? null : values[i - 1].value,
+      previous: i === 0 ? null : values[i - 1].value,
       timestamp: 1000 + i,
       type: values[i].type,
       sequence: i + 1,
@@ -135,7 +169,7 @@ test('second write moves old active generation to previous', async function(t) {
     valueDir,
     name: 'myNumber',
     value: 7,
-    prev: 6,
+    previous: 6,
     timestamp: 2000,
     type: 'num',
     sequence: 1,
@@ -146,7 +180,7 @@ test('second write moves old active generation to previous', async function(t) {
     valueDir,
     name: 'myNumber',
     value: 8,
-    prev: 7,
+    previous: 7,
     timestamp: 1000,
     type: 'num',
     sequence: 2,
@@ -160,7 +194,9 @@ test('second write moves old active generation to previous', async function(t) {
   assert.equal(active.ok, true);
   assert.equal(previous.ok, true);
   assert.equal(active.payload.value, 8);
+  assert.equal(active.payload.previous, 7);
   assert.equal(previous.payload.value, 7);
+  assert.equal(previous.payload.previous, 6);
 });
 
 test('recovery uses sequence rather than wall-clock timestamp', async function(t) {
@@ -169,7 +205,7 @@ test('recovery uses sequence rather than wall-clock timestamp', async function(t
   let active = store.wrapPayload(store.buildPayload({
     name: 'myNumber',
     value: 10,
-    prev: 9,
+    previous: 9,
     timestamp: 1000,
     type: 'num',
     sequence: 2,
@@ -179,7 +215,7 @@ test('recovery uses sequence rather than wall-clock timestamp', async function(t
   let previous = store.wrapPayload(store.buildPayload({
     name: 'myNumber',
     value: 9,
-    prev: 8,
+    previous: 8,
     timestamp: 999999999,
     type: 'num',
     sequence: 1,
@@ -200,7 +236,7 @@ test('corrupt active generation recovers previous generation', async function(t)
   let previous = store.wrapPayload(store.buildPayload({
     name: 'myNumber',
     value: 4,
-    prev: 3,
+    previous: 3,
     timestamp: 4000,
     type: 'num',
     sequence: 4,
@@ -223,18 +259,18 @@ test('checksum mismatch is rejected and can recover previous generation', async 
   let active = store.wrapPayload(store.buildPayload({
     name: 'myNumber',
     value: 11,
-    prev: 10,
+    previous: 10,
     timestamp: 11000,
     type: 'num',
     sequence: 11,
     bootId: 'boot-a',
     writtenAt: 11000,
   }));
-  active.payload.value = 12;
+  active.value = 12;
   let previous = store.wrapPayload(store.buildPayload({
     name: 'myNumber',
     value: 10,
-    prev: 9,
+    previous: 9,
     timestamp: 10000,
     type: 'num',
     sequence: 10,
@@ -256,7 +292,7 @@ test('temporary files are ignored during recovery', async function(t) {
   let active = store.wrapPayload(store.buildPayload({
     name: 'myNumber',
     value: 1,
-    prev: 0,
+    previous: 0,
     timestamp: 1000,
     type: 'num',
     sequence: 1,
@@ -266,7 +302,7 @@ test('temporary files are ignored during recovery', async function(t) {
   let staged = store.wrapPayload(store.buildPayload({
     name: 'myNumber',
     value: 99,
-    prev: 1,
+    previous: 1,
     timestamp: 2000,
     type: 'num',
     sequence: 99,
