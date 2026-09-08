@@ -1,4 +1,4 @@
-0.4.0 - Unreleased
+0.4.0 - 2026-09-08
 ==================
 
   * Start next development cycle.

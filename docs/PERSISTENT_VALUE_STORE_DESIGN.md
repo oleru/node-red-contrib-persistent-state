@@ -324,6 +324,65 @@ Resolution order:
 Open point: decide whether separate config/value directories are needed for
 Torka/Sealight/Neva, or whether a single `sharedStateDir` remains simpler.
 
+## Planned v0.5.0 Directory Layout
+
+The next storage migration should move from the current transition layout:
+
+```text
+shared-state/
+  myNumber
+  .values/
+    myNumber/
+      active.json
+      previous.json
+```
+
+to one directory per state:
+
+```text
+shared-state/
+  myNumber/
+    config.json
+    active.json
+    previous.json
+```
+
+The `State Name` should become both the Node-RED state key and the filesystem
+directory name. To keep that deterministic across Raspberry Pi/Linux, Windows,
+manual edits, backup tools, and shell scripts, the fork should reject special
+characters instead of converting names.
+
+Proposed rule:
+
+```text
+^[A-Za-z_][A-Za-z0-9_]*$
+```
+
+This allows ASCII letters, digits, and underscore only, with the first
+character limited to an ASCII letter or underscore. It deliberately excludes
+hyphen, `$`, spaces, dots, slashes, Unicode letters, and national characters,
+even though JavaScript would allow some of those forms.
+
+`v0.5.0` fallback and migration should be explicit:
+
+1. Prefer the new per-state directory layout when `config.json` or
+   `active.json` exists.
+2. If the new layout is missing, recover from the current `v0.4.0`
+   `.values/<stateName>/active.json` and `.values/<stateName>/previous.json`.
+3. If compact generations are missing, import the legacy top-level
+   `<sharedStateDir>/<stateName>` file only when it is not marked config-only.
+4. After successful recovery from an old layout, write the new per-state
+   directory files.
+5. Leave old files in place during the first `v0.5.0` migration so rollback to
+   `v0.4.0` remains possible.
+6. Log which source was used: new layout, v0.4 layout, legacy import, previous
+   generation, or default/missing.
+
+This is intentionally held out of `v0.4.0`. The current release closes with the
+compact value store integrated, legacy mirroring configurable, and rapid writes
+serialized/coalesced. The directory migration deserves its own implementation
+and test pass.
+
 ## Checksums
 
 Use Node.js `crypto.createHash("sha256")`.
