@@ -1,11 +1,15 @@
 # File I/O failure analysis
 
-This note documents current `v0.2.0` behavior when the persistent state file is
+This note documents baseline `v0.2.0` behavior when the persistent state file is
 missing, unreadable, invalid, unwritable, or temporarily locked.
 
-The current implementation is still intentionally close to
+The `v0.2.0` implementation was still intentionally close to
 `node-red-contrib-state`, so this is an evaluation of the existing behavior
 rather than the target robust storage design.
+
+`v0.3.0` starts implementing the first compatibility-preserving hardening
+step: missing files remain normal first-boot behavior, while invalid,
+unreadable, or unwritable files become visible runtime errors.
 
 ## Relevant code paths
 
@@ -31,9 +35,9 @@ Current code references:
 - `lib/state.js:306` parses the state file JSON.
 - `lib/state.js:307` catches all read/parse errors.
 
-## Current behavior matrix
+## Baseline `v0.2.0` behavior matrix
 
-| Case | Current behavior | User-visible signal | Runtime result | Persistence result |
+| Case | Baseline behavior | User-visible signal | Runtime result | Persistence result |
 | --- | --- | --- | --- | --- |
 | State file is missing | `readFile()` throws `ENOENT`; catch returns | None | Node stays with config/default value | First eligible update creates file |
 | State file is invalid JSON | `JSON.parse()` throws; catch returns | None | Node stays with config/default value | Next eligible update overwrites bad file |
@@ -44,6 +48,21 @@ Current code references:
 | Write permission denied | `writeFile()` throws `EACCES`/`EPERM` | Node-RED error log | In-memory value already changed | File is not updated |
 | File locked by another process | Platform dependent; usually write error on Windows if lock blocks writes | Node-RED error log | In-memory value already changed | File is not updated |
 | Crash/power loss during write | Direct overwrite has no temp/rename/backup protection | Maybe no signal on restart | May start from default if file becomes invalid | File can be truncated or corrupt |
+
+## Implemented `v0.3.0` hardening
+
+| Case | `v0.3.0` behavior |
+| --- | --- |
+| State file is missing | Still treated as normal first boot. No warning or error. |
+| State file is invalid JSON | File is moved to `<stateFile>.corrupt.<timestamp>`, node status is set red, and `persistenceError` is exposed in runtime state. |
+| State file exists but is unreadable | Error is logged, node status is set red, and `persistenceError` is exposed in runtime state. |
+| State path is a directory | Error is logged as a read/write failure, node status is set red, and `persistenceError` is exposed in runtime state. |
+| Storage directory is missing during write | The directory is recreated and the write is retried once. |
+| Write permission denied or locked | Error is logged, node status is set red, and `persistenceError` is exposed in runtime state. |
+| Crash/power loss during write | Still not fully solved in `v0.3.0`; direct writes remain until the active/previous/temp/checksum design is implemented. |
+
+`persistenceError` is runtime-only. It is exposed through the state object so
+flows can react, but it is not written into the persistent state file.
 
 ## Important consequences
 
@@ -90,22 +109,21 @@ Node-RED operation one runtime owns the user directory, so this is usually fine.
 If two Node-RED instances share the same `sharedStateDir`, last writer wins.
 If another process holds a blocking lock, the write fails and is only logged.
 
-## Current risk level
+## Remaining risk level
 
 The existing behavior is usable for ordinary Node-RED convenience state, but it
 is not yet robust enough for power-loss-tolerant persistent configuration.
 
 Highest-risk cases:
 
-1. Corrupt state file silently becoming default value on restart.
+1. Power loss during direct overwrite corrupting the only persisted copy.
 2. Write failure leaving runtime value different from persisted value.
-3. Power loss during direct overwrite corrupting the only persisted copy.
-4. Permission/lock issues not reflected in node status.
+3. No checksum-based validation or previous-generation recovery yet.
 
-## Recommended first hardening step
+## First hardening step
 
-Before introducing the full split config/value store, make file I/O failures
-visible and classify them:
+Before introducing the full split config/value store, `v0.3.0` makes file I/O
+failures visible and classifies them:
 
 1. Treat `ENOENT` as normal first-boot only.
 2. Log and set node status for invalid JSON, `EACCES`, `EPERM`, `EISDIR`, and
@@ -116,8 +134,8 @@ visible and classify them:
    and failed write.
 
 This is a small, compatibility-preserving improvement. It does not change the
-file format and can be done before the more robust checksum and redundant
-write protocol.
+persisted file format and prepares the ground for the more robust checksum and
+redundant write protocol.
 
 ## Target robust behavior later
 

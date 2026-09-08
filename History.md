@@ -1,4 +1,14 @@
-0.2.0 - Unreleased
+0.3.0 - Unreleased
+==================
+
+  * Make state file read/write failures visible and distinguish missing files
+    from corrupted or inaccessible state files.
+  * Quarantine invalid JSON state files with a `.corrupt.<timestamp>` suffix
+    so a later valid write can recreate the active state file without deleting
+    the failed input.
+  * Retry writes once after recreating the storage directory when it is missing.
+
+0.2.0 - 2026-09-08
 ==================
 
   * Changed get/set shared-state node editor color from light green to a
