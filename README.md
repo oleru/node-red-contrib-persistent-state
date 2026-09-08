@@ -29,7 +29,9 @@ validated recovery, last-known-good generations for critical state, and explicit
 logging of missing, corrupt, recovered and defaulted values.
 
 `v0.4.0` development has started with an internal `lib/persistentStore.js`
-module and isolated tests. It is not yet wired into the Node-RED state runtime.
+module and isolated tests. The Node-RED state runtime now writes both the
+compact value store and the legacy state file, preferring valid compact
+generations during startup recovery.
 
 See [Persistent Value Store Design](docs/PERSISTENT_VALUE_STORE_DESIGN.md) for
 the storage design plan. See [Timestamp Usage Analysis](docs/TIMESTAMP_USAGE_ANALYSIS.md)

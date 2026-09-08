@@ -381,6 +381,18 @@ Update `lib/state.js` to:
 - serialize writes per state;
 - log recovery conditions.
 
+Implemented in `v0.4.0` for the first migration-safe runtime path:
+
+- writes compact value generations through `persistentStore`;
+- continues writing the legacy `<sharedStateDir>/<stateName>` file;
+- prefers valid compact generations during startup;
+- migrates a legacy state file into the compact store when no compact
+  generation exists;
+- recovers from `previous.json` when `active.json` is corrupt.
+
+Remaining work in this phase is to serialize overlapping writes explicitly and
+improve visible Node-RED recovery/status messages.
+
 ### Phase 3: Hardening
 
 Add:

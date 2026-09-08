@@ -7,6 +7,11 @@
     `previous.json` generations, sequence-based recovery, and isolated tests.
   * Validate that persisted values are JSON-compatible, including scalar
     values, arrays, and nested object trees.
+  * Wire the state node to the compact value store while continuing to write
+    the legacy state file for compatibility.
+  * Prefer valid compact value generations on startup, migrate legacy state
+    files into the compact store, and recover from `previous.json` when
+    `active.json` is corrupt.
 
 0.3.0 - 2026-09-08
 ==================
