@@ -265,16 +265,54 @@ When the save condition is met:
 This preserves the legacy file shape while separating "persist current value"
 from "retain history entries".
 
+## Implemented `0.3.0` Correction
+
+`saveInterval` now throttles immediate disk writes without losing the latest
+accepted value.
+
+The previous behavior was:
+
+```text
+accept changed value
+if saveInterval has not elapsed:
+  update runtime state only
+  do not write now
+  do not write later unless another value change arrives
+```
+
+That allowed runtime state and persisted file state to diverge. For example, a
+Node-RED UI could show value `8` while the state file still contained `7`; a
+restart would then recover `7`.
+
+The `0.3.0` behavior is:
+
+```text
+accept changed value
+if saveInterval has elapsed:
+  persist immediately
+else:
+  schedule one delayed trailing write when the interval expires
+```
+
+If more values arrive while the delayed write is pending, the timer is not
+duplicated. When the timer fires, it persists the latest runtime value.
+
+This is a compatibility-affecting correction. Any previous flow that implicitly
+depended on skipped `saveInterval` writes never reaching disk will now persist
+the last accepted value after the interval. The intended meaning of
+`saveInterval` is "do not write more often than this", not "drop writes that
+arrive too early".
+
 ## Design Implications
 
-For the `0.2.0` direction, the smallest compatible change is:
+For the `0.2.0` and `0.3.0` direction, the smallest compatible changes are:
 
 - keep top-level `timestamp` and `history[].ts` in `msg.state` for compatibility;
 - stop using backwards wall-clock timestamps to suppress writes;
 - use the previous top-level timestamp as the save-interval reference when
   history is disabled;
-- later replace wall-clock save gating with a monotonic runtime timer or
-  write-debounce state for `saveInterval`;
+- keep a runtime timer for delayed trailing writes when `saveInterval` blocks
+  immediate persistence;
 - allow the file's top-level `value` to remain authoritative during simple
   legacy startup;
 - if history remains, treat it as a sequential list of observed values, not as a

@@ -29,9 +29,8 @@ validated recovery, last-known-good generations for critical state, and explicit
 logging of missing, corrupt, recovered and defaulted values.
 
 See [Persistent Value Store Design](docs/PERSISTENT_VALUE_STORE_DESIGN.md) for
-the `0.2.0` storage design plan.
-See [Timestamp Usage Analysis](docs/TIMESTAMP_USAGE_ANALYSIS.md) for the current
-timestamp and history behavior.
+the storage design plan. See [Timestamp Usage Analysis](docs/TIMESTAMP_USAGE_ANALYSIS.md)
+for timestamp, history, and `saveInterval` behavior.
 
 ## Installation From GitHub
 
@@ -45,7 +44,7 @@ npm install git+ssh://git@github.com/oleru/node-red-contrib-persistent-state.git
 For an installation pinned to the current development branch:
 
 ```sh
-npm install git+ssh://git@github.com/oleru/node-red-contrib-persistent-state.git#codex/v0.2.0
+npm install git+ssh://git@github.com/oleru/node-red-contrib-persistent-state.git#codex/v0.3.0
 ```
 
 For a tagged release:
@@ -59,6 +58,16 @@ Restart Node-RED after installation.
 Do not install this package alongside the original `node-red-contrib-state` in the
 same Node-RED user directory, because both packages currently register the same
 Node-RED node types.
+
+## Compatibility Notes
+
+`v0.3.0` changes `saveInterval` handling. When a changed value arrives before
+the interval has elapsed, the runtime value still updates immediately, and the
+latest value is now written later when the interval expires.
+
+The original behavior skipped that disk write completely unless another value
+change arrived later. Flows that implicitly depended on skipped writes never
+reaching disk should review this change before upgrading.
 
 ## Upstream README
 

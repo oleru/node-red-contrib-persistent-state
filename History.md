@@ -7,6 +7,9 @@
     so a later valid write can recreate the active state file without deleting
     the failed input.
   * Retry writes once after recreating the storage directory when it is missing.
+  * Schedule a delayed trailing write when `saveInterval` suppresses an
+    immediate write, so the latest runtime value is eventually persisted even
+    if no further changes arrive.
 
 0.2.0 - 2026-09-08
 ==================
