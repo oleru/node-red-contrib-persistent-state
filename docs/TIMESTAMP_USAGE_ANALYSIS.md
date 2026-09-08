@@ -1,6 +1,7 @@
 # Timestamp Usage Analysis
 
-Status: analysis for `0.2.0`. No runtime behavior is changed by this document.
+Status: analysis of the upstream-compatible baseline and the first `0.2.0`
+runtime correction.
 
 ## Question
 
@@ -9,9 +10,9 @@ select the current value.
 
 ## Summary
 
-The current implementation does not use `timestamp` or `history[].ts` to choose
-between multiple persisted values during startup. Startup reads one file per
-state and accepts that file's top-level `value`.
+The upstream-compatible baseline does not use `timestamp` or `history[].ts` to
+choose between multiple persisted values during startup. Startup reads one file
+per state and accepts that file's top-level `value`.
 
 The active behavioral use of timestamps is write gating: on update, the node
 sets `timestamp = Date.now()`, compares it with `history[0].ts`, and only writes
@@ -22,10 +23,19 @@ node.config.historyCount > 0 &&
 node.timestamp - prev_ts >= parseInt(node.config.saveInterval, 10)
 ```
 
-This means a backwards-moving wall clock can prevent new values from entering
-history and prevent the state file from being written. The timestamp does not
-directly select the current value, but it can indirectly prevent the desired
-current value from becoming the value stored on disk.
+In the baseline, this means a backwards-moving wall clock can prevent new values
+from entering history and prevent the state file from being written. The
+timestamp does not directly select the current value, but it can indirectly
+prevent the desired current value from becoming the value stored on disk.
+
+The first `0.2.0` correction keeps the public fields, but changes the persistence
+decision so:
+
+- backwards wall-clock movement triggers a save instead of suppressing one;
+- `historyCount = 0` clears history but no longer prevents the top-level
+  `value` from being persisted;
+- when there is no `history[0].ts`, the previous top-level `timestamp` is used
+  as the save-interval reference.
 
 ## Runtime Locations
 
@@ -98,7 +108,8 @@ if (node.config.historyCount > 0 &&
 }
 ```
 
-This is the only active timestamp-based decision found in runtime code.
+This was the only active timestamp-based decision found in the baseline runtime
+code.
 
 Effects:
 
@@ -221,7 +232,7 @@ README documents the public shape:
 
 and describes timestamps as milliseconds from Unix epoch.
 
-## Current Failure Mechanism
+## Baseline Failure Mechanism
 
 The defect is not "timestamp chooses an old value over a new value" directly.
 
@@ -236,13 +247,34 @@ The defect is:
 
 So `ts` is an active persistence gate, not a recovery selection key.
 
+## Implemented `0.2.0` Correction
+
+The first runtime correction changes the active decision to:
+
+```text
+previous timestamp = history[0].ts when present, otherwise previous top-level timestamp
+elapsed = Date.now() - previous timestamp
+save when clock moved backwards or elapsed >= saveInterval
+```
+
+When the save condition is met:
+
+- `historyCount > 0` records the new value at `history[0]` and trims history;
+- `historyCount = 0` writes the top-level `value` with an empty history array.
+
+This preserves the legacy file shape while separating "persist current value"
+from "retain history entries".
+
 ## Design Implications
 
 For the `0.2.0` direction, the smallest compatible change is:
 
 - keep top-level `timestamp` and `history[].ts` in `msg.state` for compatibility;
-- stop using wall-clock timestamps to decide whether a new value may be written;
-- use a monotonic runtime timer or write-debounce state for `saveInterval`;
+- stop using backwards wall-clock timestamps to suppress writes;
+- use the previous top-level timestamp as the save-interval reference when
+  history is disabled;
+- later replace wall-clock save gating with a monotonic runtime timer or
+  write-debounce state for `saveInterval`;
 - allow the file's top-level `value` to remain authoritative during simple
   legacy startup;
 - if history remains, treat it as a sequential list of observed values, not as a

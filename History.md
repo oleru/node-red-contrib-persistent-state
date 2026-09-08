@@ -7,6 +7,9 @@
     checksum-protected runtime value storage.
   * Added an analysis of how `timestamp` and `history[].ts` currently affect
     persistence decisions.
+  * Persist the current `value` even when `historyCount` is `0`.
+  * Save on backwards wall-clock movement instead of letting a future
+    `history[].ts` suppress persistence.
 
 1.6.1 - 01/09/2022
 ==================
