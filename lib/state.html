@@ -36,7 +36,7 @@
       name: {value:"", required:true, validate:isValidName},
       lbl: {value:null},
       tags: {value:null},
-      historyCount: {value: 2, required:true},
+      historyCount: {value: 0, required:true},
       dataType: {value:null},  // str, bool, num, obj
       boolType: {value:null},  // bool, num, str
       boolStrTrue: {value:null},  // On, Active, ...
@@ -128,13 +128,13 @@
 </div>
 
 <div class="form-row">
-    <label for="node-config-input-historyCount"><i class="fa fa-area-chart fa-fw"></i> History</label>
+    <label for="node-config-input-historyCount"><i class="fa fa-area-chart fa-fw"></i> History (legacy)</label>
     Keep <input style="width: 50px; text-align: right; margin:0 4px; padding: 0px 6px 0 0px;" type="number" min="0" id="node-config-input-historyCount"> items
 </div>
 
 <div class="form-tips">
     <span>Tip: <i style="width:24px; text-align:center" class="fa fa-area-chart"></i> 
-    Keep this number trim, as history is stored in memory and written to disk on state change.</span>
+    History is deprecated in this fork. New states default to 0, and the runtime keeps the compatibility field empty.</span>
 </div>
 
 <div class="form-row">
@@ -204,7 +204,7 @@
  <ul>
    <li><b>State Name</b> - Name of the persistent shared state. This is the key used to identify the state, and must be a valid JavaScript variable name.</li>
    <li><b>Label</b> - The label that appears on the state node.</li>
-   <li><b>History</b> - Number of state changes to keep. Set to 0 for no state save or history.</li>
+   <li><b>History</b> - Deprecated compatibility setting. New nodes default to 0, state still saves normally, and the runtime keeps <code>history</code> empty.</li>
    <li><b>Saving interval</b> - Rate limit for saving state changes. Defaults to 0 when every state change is saved to disk.</li>
  </ul>
  <h4>Optional Metadata</h4>

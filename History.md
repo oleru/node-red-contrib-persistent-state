@@ -10,6 +10,9 @@
   * Schedule a delayed trailing write when `saveInterval` suppresses an
     immediate write, so the latest runtime value is eventually persisted even
     if no further changes arrive.
+  * Mark active history handling as deprecated. New shared-state nodes default
+    `historyCount` to `0`, and the runtime keeps `history` as an empty
+    compatibility field.
 
 0.2.0 - 2026-09-08
 ==================

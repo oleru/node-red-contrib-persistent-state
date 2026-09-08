@@ -134,7 +134,7 @@
        <li><b>value</b> - Current state value</li>
        <li><b>prev</b> - Previous state value</li>
        <li><b>timestamp</b> - Timestamp of the state change in Date.now() format</li>
-       <li><b>history</b> - an array of state change <pre>{val:value, ts:timestamp}</pre> objects, sorted newest to oldest</li>
+       <li><b>history</b> - deprecated compatibility field. In this fork it is kept as an empty array; use <code>value</code>, <code>prev</code>, and <code>timestamp</code> for current state handling.</li>
      </ul>
    </li>
  </ul>

@@ -1,7 +1,8 @@
 # Persistent Value Store Design
 
-Status: design plan for `0.2.0`. No runtime behavior is changed by this
-document.
+Status: design plan for `0.3.0`. Some compatibility-preserving runtime
+corrections are already implemented; the compact redundant value store remains
+planned work.
 
 ## Goal
 
@@ -57,7 +58,7 @@ Suggested config payload:
     "name": "myNumber",
     "lbl": "",
     "tags": "",
-    "historyCount": 2,
+    "historyCount": 0,
     "dataType": "num",
     "precision": "",
     "numMin": "",
@@ -253,9 +254,14 @@ On first startup with the new store:
 6. Rewrite or preserve the top-level file as config according to the config-file
    policy.
 
-Legacy `history` should not be treated as redundancy. It may be kept in memory
-for compatibility if existing flows depend on it, but the value-store recovery
-must not rely on it.
+Legacy `history` must not be treated as redundancy. As of `v0.3.0`, the field is
+kept in `msg.state`, global context, and persisted JSON for compatibility, but
+the runtime keeps it as an empty array and does not actively maintain it.
+
+This deliberately keeps the file and message shape familiar while removing
+history as a source of persistence decisions. Current value handling should use
+top-level `value`, `prev`, and `timestamp`. Future recovery must use the compact
+value-store generations, sequence numbers, and checksums instead of history.
 
 ## Config Path Option
 
@@ -349,7 +355,8 @@ Update `lib/state.js` to:
 
 - initialize config and value paths;
 - recover runtime value from `persistentStore`;
-- keep `exposedState()` compatible;
+- keep `exposedState()` compatible, including `history: []` as a deprecated
+  field;
 - write current value through `persistentStore`;
 - serialize writes per state;
 - log recovery conditions.
@@ -381,7 +388,15 @@ Before tagging `v0.2.0`:
 - Is one previous generation enough, or do critical states need more than one?
 - Should missing/corrupt critical values inhibit operation, raise a visible
   alarm, or default?
-- Should `history` remain in `msg.state` for compatibility only, or be actively
-  maintained?
 - Should config/value roots be separate settings, or is one `sharedStateDir`
   sufficient for now?
+
+## Accepted Decisions
+
+- `history` remains in `msg.state`, global context, and persisted JSON for
+  compatibility only.
+- New state nodes default `historyCount` to `0`.
+- Runtime code keeps `history` empty instead of appending entries on value
+  changes.
+- `history` is not a recovery source. The compact value-store design will use
+  explicit active/previous generations with checksums.

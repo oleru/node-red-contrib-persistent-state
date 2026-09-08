@@ -75,6 +75,13 @@ Existing flows stay compatible by default.
 Only variables explicitly configured with a specialized policy receive
 delta/checkpoint behavior.
 
+Active history handling is deprecated as of `v0.3.0`. The `history` field stays
+in `msg.state`, global context, and the persisted legacy JSON shape, but the
+runtime keeps it empty and does not use it for persistence gating, recovery, or
+current-value selection. This makes the standard policy about `value`, `prev`,
+`timestamp`, and the save throttle, while the planned robust store handles
+redundancy separately.
+
 The first expected production candidates from the MDC2022 raspPI case are:
 
 - `Horizontal_pos_act`

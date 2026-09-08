@@ -69,6 +69,12 @@ The original behavior skipped that disk write completely unless another value
 change arrived later. Flows that implicitly depended on skipped writes never
 reaching disk should review this change before upgrading.
 
+`v0.3.0` also deprecates active history handling. The `history` field remains in
+`msg.state`, global context, and the persisted JSON for compatibility, but it is
+kept as an empty array and is no longer used to decide whether a value should be
+saved. New state configurations default `historyCount` to `0`. Use `value`,
+`prev`, and `timestamp` for current and previous value handling.
+
 ## Upstream README
 
 The original upstream README content follows.
@@ -118,8 +124,8 @@ made available with the getState node and in the global state context.
 The getState node can be dropped onto any flow to trigger a message on initialization, and on
 state change. The _msg.topic_ contains the state name, the _msg.payload_ contains the state value,
 and the _msg.state_ object contains an object with the following structure 
-`{value:value, prev:prev_value, timestamp:num, history:history, config:config}`, where the _history_ object
-is an array of `{val:value, ts=num}` objects. Timestamps are milliseconds from the Unix epoch
+`{value:value, prev:prev_value, timestamp:num, history:history, config:config}`. In this fork,
+`history` is a deprecated compatibility field kept as an empty array. Timestamps are milliseconds from the Unix epoch
 because they serialize nicely, they work well for `Date()` construction, and they simplify
 computing durations between timestamps. The `config` element is the state configuration, containing
 any metadata defined on the state node such as data type, unit of measure, etc.
@@ -145,7 +151,7 @@ Another useful way to obtain shared state is to add it to a message using the _C
 
 ## Shared State Storage
 
-Shared state is saved onto the filesystem, along with history, on each state change. This assures stability
+Shared state is saved onto the filesystem on state change. This assures stability
 across server restarts.
 
 Each state is written to a file in a _./shared-state_ directory within the current Node-RED application

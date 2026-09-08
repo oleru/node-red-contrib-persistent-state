@@ -1,7 +1,7 @@
 # Timestamp Usage Analysis
 
-Status: analysis of the upstream-compatible baseline and the first `0.2.0`
-runtime correction.
+Status: analysis of the upstream-compatible baseline and the `v0.2.0`/`v0.3.0`
+runtime corrections.
 
 ## Question
 
@@ -28,7 +28,7 @@ from entering history and prevent the state file from being written. The
 timestamp does not directly select the current value, but it can indirectly
 prevent the desired current value from becoming the value stored on disk.
 
-The first `0.2.0` correction keeps the public fields, but changes the persistence
+The first `v0.2.0` correction keeps the public fields, but changes the persistence
 decision so:
 
 - backwards wall-clock movement triggers a save instead of suppressing one;
@@ -36,6 +36,11 @@ decision so:
   `value` from being persisted;
 - when there is no `history[0].ts`, the previous top-level `timestamp` is used
   as the save-interval reference.
+
+The `v0.3.0` correction deprecates active history handling. The `history` field
+still exists in `msg.state`, global context, and the legacy JSON file shape, but
+it is kept as an empty array and is no longer appended to on value changes. New
+state nodes default `historyCount` to `0`.
 
 ## Runtime Locations
 
@@ -74,8 +79,9 @@ This object is used in:
 - `global.state.<name>`;
 - `msg.state` emitted by get/set nodes.
 
-So `timestamp` and `history` are part of the public compatibility surface, even
-if they should no longer drive persistence decisions.
+So `timestamp` and `history` are part of the public compatibility surface.
+`timestamp` remains useful metadata. `history` is now a deprecated compatibility
+field and should no longer drive persistence decisions.
 
 ### Update Path
 
@@ -247,7 +253,7 @@ The defect is:
 
 So `ts` is an active persistence gate, not a recovery selection key.
 
-## Implemented `0.2.0` Correction
+## Implemented `v0.2.0` Correction
 
 The first runtime correction changes the active decision to:
 
@@ -265,7 +271,7 @@ When the save condition is met:
 This preserves the legacy file shape while separating "persist current value"
 from "retain history entries".
 
-## Implemented `0.3.0` Correction
+## Implemented `v0.3.0` Save Interval Correction
 
 `saveInterval` now throttles immediate disk writes without losing the latest
 accepted value.
@@ -303,37 +309,48 @@ the last accepted value after the interval. The intended meaning of
 `saveInterval` is "do not write more often than this", not "drop writes that
 arrive too early".
 
+## Implemented `v0.3.0` History Deprecation
+
+Active history maintenance is deprecated in this fork.
+
+The runtime behavior is:
+
+```text
+accept changed value
+update value, prev, and timestamp
+keep history as []
+persist exposed state when the save policy allows it
+```
+
+`historyCount` remains in node configuration so old flows import cleanly, but
+new nodes default it to `0`. Existing files with historical entries are still
+accepted during startup; the loaded runtime state normalizes `history` to an
+empty array, and the next successful write compacts the file.
+
+This closes the earlier open design point. `history` remains a compatibility
+field only. It is not a recovery source, not a current-value selector, and not a
+redundant backup of `value`.
+
 ## Design Implications
 
-For the `0.2.0` and `0.3.0` direction, the smallest compatible changes are:
+For the `v0.2.0` and `v0.3.0` direction, the smallest compatible changes are:
 
-- keep top-level `timestamp` and `history[].ts` in `msg.state` for compatibility;
+- keep top-level `timestamp` and `history` in `msg.state` for compatibility;
 - stop using backwards wall-clock timestamps to suppress writes;
-- use the previous top-level timestamp as the save-interval reference when
-  history is disabled;
+- use the last successfully persisted top-level timestamp as the save-interval
+  reference;
 - keep a runtime timer for delayed trailing writes when `saveInterval` blocks
   immediate persistence;
 - allow the file's top-level `value` to remain authoritative during simple
   legacy startup;
-- if history remains, treat it as a sequential list of observed values, not as a
-  timestamp-selected source of truth.
-
-If we want history to "flow through the list" without wall-clock selection, the
-history append/trim logic can become:
-
-```text
-accept changed value -> push current value into history[0] -> trim by count
-```
-
-and persistence throttling should be separate from history ordering.
+- keep `history` empty and deprecated until a later major compatibility decision
+  removes it from the public shape.
 
 ## Open Questions
 
 - Should `saveInterval` throttle disk writes only, or should it also throttle
-  history entries?
-- Should `history[].ts` remain wall-clock metadata, or become a monotonic
-  sequence-like value while preserving the field name?
+  legacy metadata updates?
 - Should `timestamp` remain in the public `msg.state` object for compatibility
   even if it is informational only?
 - Should startup keep accepting only top-level `value`, or should a valid
-  history entry ever be allowed to repair a missing top-level value?
+  compact value-store generation repair a missing top-level legacy value?
