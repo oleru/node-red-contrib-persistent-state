@@ -14,6 +14,8 @@
     `active.json` is corrupt.
   * Slim the value generation file to dynamic fields only: `value`,
     `previous`, `sequence`, `timestamp`, and a flat SHA-256 `checksum`.
+  * Read early `v0.4.0` wrapped value files and rewrite them to the flat
+    compact format during startup recovery.
 
 0.3.0 - 2026-09-08
 ==================

@@ -38,6 +38,7 @@ test('wrapPayload creates flat compact generation with checksum', function() {
   assert.equal(typeof wrapped.checksum, 'string');
   let valid = store.validateWrappedGeneration(wrapped, {name: 'myNumber', type: 'num'}, 'active');
   assert.equal(valid.ok, true);
+  assert.equal(valid.format, 'compact');
 
   wrapped.value = 8;
   let invalid = store.validateWrappedGeneration(wrapped, {name: 'myNumber', type: 'num'}, 'active');
@@ -68,6 +69,7 @@ test('reader accepts previous wrapped payload/checksum generation format', funct
 
   let valid = store.validateWrappedGeneration(legacyWrapped, {name: 'myNumber', type: 'num'}, 'active');
   assert.equal(valid.ok, true);
+  assert.equal(valid.format, 'legacyWrapped');
   assert.deepEqual(valid.payload, {
     value: 9,
     previous: 8,
