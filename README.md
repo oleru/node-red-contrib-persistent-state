@@ -30,6 +30,8 @@ logging of missing, corrupt, recovered and defaulted values.
 
 See [Persistent Value Store Design](docs/PERSISTENT_VALUE_STORE_DESIGN.md) for
 the `0.2.0` storage design plan.
+See [Timestamp Usage Analysis](docs/TIMESTAMP_USAGE_ANALYSIS.md) for the current
+timestamp and history behavior.
 
 ## Installation From GitHub
 
