@@ -228,6 +228,71 @@ test('state node coalesces concurrent writes to the latest runtime value', async
   assert.equal(node.persistAgain, false);
 });
 
+test('state node mirrors values to the legacy state file by default', async function(t) {
+  let stateDir = await makeStateDir(t);
+  let StateCtor = loadStateConstructor();
+  let node = new StateCtor(makeConfig(stateDir));
+  await waitForInit();
+
+  await node.update(11);
+
+  let legacyState = JSON.parse(await fs.readFile(path.join(stateDir, 'myNumber'), 'utf8'));
+  assert.equal(legacyState.value, 11);
+  assert.equal(legacyState.prev, '');
+  assert.equal(legacyState.timestamp, node.timestamp);
+  assert.deepEqual(legacyState.history, []);
+  assert.equal(legacyState.config.name, 'myNumber');
+});
+
+test('state node can keep the legacy state file as config metadata only', async function(t) {
+  let stateDir = await makeStateDir(t);
+  let StateCtor = loadStateConstructor();
+  let node = new StateCtor(makeConfig(stateDir, {legacyValueUpdates: false}));
+  await waitForInit();
+
+  await node.update(12);
+
+  let legacyState = JSON.parse(await fs.readFile(path.join(stateDir, 'myNumber'), 'utf8'));
+  assert.deepEqual(legacyState.valueStore, {
+    mode: 'compact',
+    legacyValueUpdates: false,
+  });
+  assert.equal(Object.hasOwn(legacyState, 'value'), false);
+  assert.equal(Object.hasOwn(legacyState, 'prev'), false);
+  assert.equal(Object.hasOwn(legacyState, 'timestamp'), false);
+  assert.deepEqual(legacyState.history, []);
+  assert.equal(legacyState.config.name, 'myNumber');
+
+  let valueDir = persistentStore.getValueDir(stateDir, 'myNumber');
+  let recovered = await persistentStore.recover({valueDir, name: 'myNumber', type: 'num'});
+  assert.equal(recovered.status, 'recovered');
+  assert.equal(recovered.payload.value, 12);
+});
+
+test('state node does not recover a value from a config-only legacy state file', async function(t) {
+  let stateDir = await makeStateDir(t);
+  await fs.writeFile(path.join(stateDir, 'myNumber'), JSON.stringify({
+    valueStore: {
+      mode: 'compact',
+      legacyValueUpdates: false,
+    },
+    history: [],
+    config: {
+      name: 'myNumber',
+      legacyValueUpdates: false,
+    },
+  }), 'utf8');
+
+  let StateCtor = loadStateConstructor();
+  let node = new StateCtor(makeConfig(stateDir, {legacyValueUpdates: false}));
+  await waitForInit();
+
+  assert.equal(node.value, '');
+  assert.equal(node.initialized, false);
+  assert.equal(node.__warnings.length, 1);
+  assert.match(node.__warnings[0], /config-only/);
+});
+
 test('state node recovers previous value generation when active is corrupt', async function(t) {
   let stateDir = await makeStateDir(t);
   let valueDir = persistentStore.getValueDir(stateDir, 'myNumber');

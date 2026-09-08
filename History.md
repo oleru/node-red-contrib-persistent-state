@@ -18,6 +18,10 @@
     compact format during startup recovery.
   * Serialize writes per state and coalesce rapid updates so only the latest
     pending runtime value is persisted after an in-flight write completes.
+  * Add a per-state `Legacy file` option. It defaults to updating the original
+    state file with `value` / `prev` for compatibility, but can be disabled so
+    the legacy file acts as configuration metadata only while compact value
+    generations remain the active persistent value source.
 
 0.3.0 - 2026-09-08
 ==================

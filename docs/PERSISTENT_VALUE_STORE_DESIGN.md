@@ -1,8 +1,8 @@
 # Persistent Value Store Design
 
-Status: design plan for `0.3.0`. Some compatibility-preserving runtime
-corrections are already implemented; the compact redundant value store remains
-planned work.
+Status: design plan and implementation notes for `0.4.0`. The compact value
+store is now integrated into the Node-RED state runtime, while some later config
+split and policy controls remain planned work.
 
 ## Goal
 
@@ -46,6 +46,21 @@ The existing state file path should remain:
 This file should become the human-readable state definition/config file. It may
 also act as the migration source for legacy installations.
 
+During the transition, each `shared-state` node has a `legacyValueUpdates`
+configuration flag, exposed in the editor as `Legacy file: Update value/prev in
+legacy file`.
+
+- Default `true`: preserve compatibility by mirroring `value`, `prev`,
+  `timestamp`, empty `history`, and `config` into the legacy file on persisted
+  value changes.
+- `false`: write the legacy file as config metadata only. The compact value
+  store is then the only active persisted value source.
+
+When `legacyValueUpdates` is `false`, the legacy file must include an explicit
+`valueStore.legacyValueUpdates: false` marker and must not include stale
+top-level `value`, `prev`, or `timestamp` fields. Startup recovery must not
+import a runtime value from such a config-only legacy file.
+
 Suggested config payload:
 
 ```json
@@ -73,6 +88,11 @@ Suggested config payload:
 Open point: decide whether the config file should be rewritten on every deploy
 or only when the config changes. The preferred default is only when the config
 changes.
+
+Current implementation note: config-only mode still rewrites the legacy file
+when a value is persisted, but it writes only metadata, not the runtime value.
+A later implementation can reduce this further by writing the config file only
+on deploy/config change.
 
 ### Value Directory
 
@@ -270,6 +290,9 @@ On first startup with the new store:
 5. Write `active.json`.
 6. Rewrite or preserve the top-level file as config according to the config-file
    policy.
+
+If the top-level file has `valueStore.legacyValueUpdates: false`, skip legacy
+value import. That file is a config-only marker, not a recoverable value source.
 
 Legacy `history` must not be treated as redundancy. As of `v0.3.0`, the field is
 kept in `msg.state`, global context, and persisted JSON for compatibility, but

@@ -29,9 +29,11 @@ validated recovery, last-known-good generations for critical state, and explicit
 logging of missing, corrupt, recovered and defaulted values.
 
 `v0.4.0` development has started with an internal `lib/persistentStore.js`
-module and isolated tests. The Node-RED state runtime now writes both the
-compact value store and the legacy state file, preferring valid compact
-generations during startup recovery.
+module and isolated tests. The Node-RED state runtime now writes the compact
+value store, preferring valid compact generations during startup recovery. By
+default it also mirrors values to the legacy state file for compatibility; this
+can be disabled per state node when the legacy file should act as configuration
+metadata only.
 
 See [Persistent Value Store Design](docs/PERSISTENT_VALUE_STORE_DESIGN.md) for
 the storage design plan. See [Timestamp Usage Analysis](docs/TIMESTAMP_USAGE_ANALYSIS.md)
@@ -50,6 +52,12 @@ For an installation pinned to the current development branch:
 
 ```sh
 npm install git+ssh://git@github.com/oleru/node-red-contrib-persistent-state.git#codex/v0.3.0
+```
+
+For the current `v0.4.0` development branch:
+
+```sh
+npm install git+ssh://git@github.com/oleru/node-red-contrib-persistent-state.git#codex/v0.4.0
 ```
 
 For a tagged release:
@@ -79,6 +87,14 @@ reaching disk should review this change before upgrading.
 kept as an empty array and is no longer used to decide whether a value should be
 saved. New state configurations default `historyCount` to `0`. Use `value`,
 `prev`, and `timestamp` for current and previous value handling.
+
+`v0.4.0` adds a `Legacy file` checkbox on each `shared-state` configuration.
+When enabled, the original `<sharedStateDir>/<stateName>` file is updated with
+`value`, `prev`, `timestamp`, empty `history`, and `config` on persisted value
+changes. When disabled, that legacy file is written as configuration metadata
+only, and the compact value store under `<sharedStateDir>/.values/<stateName>/`
+is the only active persisted value source. Keep the checkbox enabled during
+early migration if any external tooling reads the old file directly.
 
 ## Upstream README
 
