@@ -189,6 +189,45 @@ test('state node rewrites old wrapped value generation as flat compact format', 
   assert.equal(activeFile.sequence, 4);
 });
 
+test('state node coalesces concurrent writes to the latest runtime value', async function(t) {
+  let stateDir = await makeStateDir(t);
+  let StateCtor = loadStateConstructor();
+  let node = new StateCtor(makeConfig(stateDir));
+  await waitForInit();
+
+  node.value = 0;
+  node.prev = null;
+  node.timestamp = 1;
+  node.initialized = true;
+
+  let snapshots = [];
+  let firstWrite = true;
+  node.writeStateSnapshot = async function(snapshot) {
+    snapshots.push({
+      value: snapshot.value,
+      prev: snapshot.prev,
+      sequence: snapshot.sequence,
+    });
+    if (firstWrite) {
+      firstWrite = false;
+      await node.update(2);
+      await node.update(3);
+    }
+  };
+
+  await node.update(1);
+
+  assert.deepEqual(snapshots, [
+    {value: 1, prev: 0, sequence: 1},
+    {value: 3, prev: 2, sequence: 2},
+  ]);
+  assert.equal(node.value, 3);
+  assert.equal(node.prev, 2);
+  assert.equal(node.sequence, 2);
+  assert.equal(node.persistInFlight, false);
+  assert.equal(node.persistAgain, false);
+});
+
 test('state node recovers previous value generation when active is corrupt', async function(t) {
   let stateDir = await makeStateDir(t);
   let valueDir = persistentStore.getValueDir(stateDir, 'myNumber');

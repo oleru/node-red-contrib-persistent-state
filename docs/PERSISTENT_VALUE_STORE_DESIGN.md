@@ -161,6 +161,28 @@ for this fork.
 All writes for one state must be serialized. A state should never have two
 concurrent filesystem commits in flight.
 
+The runtime uses a coalescing write pump. If a new value arrives while a write is
+already in progress, it does not enqueue every intermediate value. It marks that
+another write is needed, lets the current write finish, then writes one snapshot
+of the latest runtime value. This keeps disk I/O bounded during fast updates
+while still converging on the newest accepted state.
+
+For example:
+
+```text
+runtime accepts: 10, 11, 12, 13
+disk may persist: 10, then 13
+```
+
+The intermediate `11` and `12` values are not retained as durable generations.
+This is intentional because `history` is deprecated and the value store is a
+recovery mechanism, not a full event log.
+
+In a compact value generation, `previous` means the previous runtime value at
+the moment that snapshot was accepted. The file `previous.json` has a different
+meaning: it is the previous successfully persisted generation. Those two values
+can differ when rapid runtime updates are coalesced.
+
 Preferred write flow:
 
 1. Validate and type-convert the new value.
@@ -367,9 +389,11 @@ Implemented in `v0.4.0` for the first migration-safe runtime path:
 - migrates a legacy state file into the compact store when no compact
   generation exists;
 - recovers from `previous.json` when `active.json` is corrupt.
+- serializes overlapping writes and coalesces queued updates so only the latest
+  runtime state is persisted after an in-flight write completes.
 
-Remaining work in this phase is to serialize overlapping writes explicitly and
-improve visible Node-RED recovery/status messages.
+Remaining work in this phase is to improve visible Node-RED recovery/status
+messages.
 
 ### Phase 3: Hardening
 

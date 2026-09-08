@@ -16,6 +16,8 @@
     `previous`, `sequence`, `timestamp`, and a flat SHA-256 `checksum`.
   * Read early `v0.4.0` wrapped value files and rewrite them to the flat
     compact format during startup recovery.
+  * Serialize writes per state and coalesce rapid updates so only the latest
+    pending runtime value is persisted after an in-flight write completes.
 
 0.3.0 - 2026-09-08
 ==================
