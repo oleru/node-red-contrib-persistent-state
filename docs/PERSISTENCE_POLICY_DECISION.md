@@ -31,6 +31,7 @@ heading, level, pressure, or other numeric process values.
 The sampled numeric policy should support:
 
 - `minPersistDelta`, in the unit of the value.
+- Runtime override or calculation of `minPersistDelta`.
 - `checkpointIntervalMs`, for example `5000`.
 - `quietPersistDelayMs`, for example `10000`.
 - Comparison against last successfully persisted value, not only the previous
@@ -52,6 +53,12 @@ updates while the physical system changes, and can also oscillate slightly
 because of sensors, counters, vibration, noise, environmental movement, or
 rounding. These values need controlled checkpointing rather than immediate
 write-on-every-change or delayed write only after complete quiet.
+
+The useful delta threshold can depend on runtime system configuration. For
+example, an A/B pulse position signal may have different resolution on
+different hardware variants. One system may represent a full 360 degree range
+with 360 pulses, while another may use a much higher pulse count. A fixed
+threshold in node configuration is therefore not always sufficient.
 
 The original discussion used searchlight position as a concrete case, but the
 decision is about data categories:
@@ -91,6 +98,17 @@ The sampled numeric policy should write when both conditions are true:
 
 It should also write the final settled value after `quietPersistDelayMs` without
 new meaningful movement.
+
+`minPersistDelta` must be configurable at runtime. The implementation should
+allow the flow to provide or update the effective threshold, for example from
+system type, calibration data, scale factor, pulse ratio, or another runtime
+context value. The configured value in the node can be a default, but it must
+not be the only possible source.
+
+The delta comparison should happen in the state variable's effective value
+unit, after the flow has converted raw sensor/counter data into the value being
+stored. If a flow stores degrees, the threshold is degrees. If another flow
+stores raw pulses, the threshold is pulses.
 
 Power-loss warning should not trigger a special panic write before robust
 storage is implemented. Once robust storage exists, it may request a checkpoint
