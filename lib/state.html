@@ -271,7 +271,7 @@
 
     <div class="form-tips">
         <span>Tip: <i style="width:24px; text-align:center" class="fa fa-line-chart"></i>
-        Stream persistence is for fast numeric signals. It writes immediately only when the value has moved far enough and the interval allows it, then writes the latest stable value after updates go quiet.</span>
+        Stream persistence is for fast numeric signals. It writes by delta only when the interval allows it, and can write a value that remains stable through the stable delay even while identical samples keep arriving.</span>
     </div>
 </div>
 

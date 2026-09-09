@@ -9,6 +9,8 @@
   * Apply stream persistence at runtime so fast numeric updates still flow
     through immediately while disk writes are gated by delta, interval, and
     quiet/stable delay.
+  * Allow runtime tuning through `msg.streamPersistence`, and define
+    `Stream interval = 0` as stable-value-only persistence.
 
 0.5.0 - 2026-09-09
 ==================
