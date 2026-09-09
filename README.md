@@ -96,6 +96,12 @@ only, and the compact value store under `<sharedStateDir>/.values/<stateName>/`
 is the only active persisted value source. Keep the checkbox enabled during
 early migration if any external tooling reads the old file directly.
 
+`v0.5.0` development normalizes recovered values through the current
+`shared-state` data type configuration. For example, a stored numeric `7` is
+recovered as `"7"` after changing the node from Number to String. If the newest
+generation cannot be converted safely, recovery can try the previous compact
+generation before falling back to legacy import or defaults.
+
 ## Upstream README
 
 The original upstream README content follows.

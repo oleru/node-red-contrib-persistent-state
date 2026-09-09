@@ -148,6 +148,67 @@ test('state node recovers compact value store before stale legacy state file', a
   assert.equal(node.sequence, 3);
 });
 
+test('state node converts recovered compact value to current string data type', async function(t) {
+  let stateDir = await makeStateDir(t);
+  let valueDir = persistentStore.getValueDir(stateDir, 'myNumber');
+  await persistentStore.writeGeneration({
+    valueDir,
+    name: 'myNumber',
+    value: 8,
+    previous: 7,
+    timestamp: 2000,
+    sequence: 3,
+  });
+
+  let StateCtor = loadStateConstructor();
+  let node = new StateCtor(makeConfig(stateDir, {dataType: 'str'}));
+  await waitForInit();
+
+  assert.equal(node.value, '8');
+  assert.equal(node.prev, '7');
+  assert.equal(node.sequence, 4);
+  assert.equal(node.__warnings.length, 1);
+  assert.match(node.__warnings[0], /converted/);
+
+  let recovered = await persistentStore.recover({valueDir, name: 'myNumber', type: ''});
+  assert.equal(recovered.payload.value, '8');
+  assert.equal(recovered.payload.previous, '7');
+  assert.equal(recovered.payload.sequence, 4);
+});
+
+test('state node tries previous generation when active cannot convert to current number data type', async function(t) {
+  let stateDir = await makeStateDir(t);
+  let valueDir = persistentStore.getValueDir(stateDir, 'myNumber');
+  await persistentStore.writeGeneration({
+    valueDir,
+    name: 'myNumber',
+    value: '7',
+    previous: '6',
+    timestamp: 1000,
+    sequence: 2,
+  });
+  await persistentStore.writeGeneration({
+    valueDir,
+    name: 'myNumber',
+    value: 'abc',
+    previous: '7',
+    timestamp: 2000,
+    sequence: 3,
+  });
+
+  let StateCtor = loadStateConstructor();
+  let node = new StateCtor(makeConfig(stateDir, {dataType: 'num'}));
+  await waitForInit();
+
+  assert.equal(node.value, 7);
+  assert.equal(node.prev, 6);
+  assert.equal(node.sequence, 3);
+  assert.equal(node.__warnings.length, 3);
+  assert.match(node.__warnings[0], /Skipped recovered value generation/);
+  assert.match(node.__warnings[1], /converted/);
+  assert.match(node.__warnings[2], /previous value generation/);
+});
+
 test('state node rewrites old wrapped value generation as flat compact format', async function(t) {
   let stateDir = await makeStateDir(t);
   let valueDir = persistentStore.getValueDir(stateDir, 'myNumber');
@@ -186,6 +247,48 @@ test('state node rewrites old wrapped value generation as flat compact format', 
   assert.deepEqual(Object.keys(activeFile).sort(), ['checksum', 'previous', 'sequence', 'timestamp', 'value']);
   assert.equal(activeFile.value, 9);
   assert.equal(activeFile.previous, 8);
+  assert.equal(activeFile.sequence, 4);
+});
+
+test('state node converts old wrapped value generation after data type change', async function(t) {
+  let stateDir = await makeStateDir(t);
+  let valueDir = persistentStore.getValueDir(stateDir, 'myNumber');
+  let paths = persistentStore.getStorePaths(valueDir);
+  let legacyPayload = {
+    schema: persistentStore.VALUE_SCHEMA,
+    name: 'myNumber',
+    value: 9,
+    prev: 8,
+    timestamp: 3000,
+    type: 'num',
+    sequence: 3,
+    bootId: 'boot-old',
+    writtenAt: 3001,
+  };
+  let legacyWrapped = {
+    payload: legacyPayload,
+    checksum: {
+      algorithm: 'sha256',
+      encoding: 'hex',
+      value: persistentStore.checksumPayload(legacyPayload),
+    },
+  };
+  await fs.mkdir(valueDir, {recursive: true});
+  await fs.writeFile(paths.active, persistentStore.canonicalStringify(legacyWrapped), 'utf8');
+
+  let StateCtor = loadStateConstructor();
+  let node = new StateCtor(makeConfig(stateDir, {dataType: 'str'}));
+  await waitForInit();
+
+  assert.equal(node.value, '9');
+  assert.equal(node.prev, '8');
+  assert.equal(node.sequence, 4);
+  assert.equal(node.__warnings.length, 1);
+  assert.match(node.__warnings[0], /converted/);
+
+  let activeFile = JSON.parse(await fs.readFile(paths.active, 'utf8'));
+  assert.equal(activeFile.value, '9');
+  assert.equal(activeFile.previous, '8');
   assert.equal(activeFile.sequence, 4);
 });
 

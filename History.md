@@ -3,6 +3,10 @@
 
   * Start next development cycle for per-state directory layout and explicit
     migration fallback.
+  * Convert recovered compact and legacy values through the current
+    `shared-state` data type configuration before activating them. Converted
+    values are rewritten as compact generations, and invalid active
+    generations can fall back to a valid `previous.json`.
 
 0.4.0 - 2026-09-08
 ==================

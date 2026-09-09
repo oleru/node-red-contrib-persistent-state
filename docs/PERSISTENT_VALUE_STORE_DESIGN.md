@@ -383,6 +383,36 @@ compact value store integrated, legacy mirroring configurable, and rapid writes
 serialized/coalesced. The directory migration deserves its own implementation
 and test pass.
 
+## Data Type Changes During Recovery
+
+Recovered values must be normalized through the current `shared-state`
+configuration before they become active runtime state. This keeps the compact
+value store independent from static type metadata while still respecting the
+Node-RED flow configuration.
+
+Examples:
+
+- `dataType` changed from `num` to `str`: recovered `7` becomes `"7"`.
+- `dataType` changed from `str` to `num`: recovered `"7"` becomes `7`.
+- `dataType` changed from `str` to `num`: recovered `"abc"` is not a valid
+  runtime number and that generation is skipped.
+
+Recovery policy:
+
+1. Validate checksum and sequence first.
+2. Try the newest valid generation.
+3. Convert `value` through the same type conversion used by normal set-state
+   updates.
+4. Convert `previous` when possible; if only `previous` is incompatible, keep
+   the current value and set `previous` to `null`.
+5. If `value` cannot be represented as JSON after conversion, skip that
+   generation and try the next valid generation.
+6. If a generation is converted, rewrite it as a fresh compact generation so
+   later boots do not repeat the migration.
+
+This makes data type changes explicit and recoverable instead of silently
+booting with a value whose JavaScript type no longer matches the node config.
+
 ## Checksums
 
 Use Node.js `crypto.createHash("sha256")`.
