@@ -102,6 +102,11 @@ write `<sharedStateDir>/factory-defaults.json`, generate a template from active
 `shared-state` variables, and apply selected defaults by an explicit JSON
 command with `confirm: true`.
 
+`v0.6.0` development adds number-only `Stream values` persistence controls for
+fast-changing numeric signals. The runtime value and change events still update
+on every accepted change, but disk writes can be gated by minimum value delta,
+stream write interval, and stable-value delay.
+
 New storage layout:
 
 ```text
@@ -147,6 +152,29 @@ statuses. Missing config references, invalid numeric values, non-JSON-compatible
 payloads, corrupt value files, and factory-default validation problems should
 show a clear message instead of leaking generic `undefined` or null-reference
 errors.
+
+### Stream Values
+
+`Stream values` is available only when `Data Type` is `Number`. It is intended
+for high-frequency numeric streams such as position, heading, or sensor values
+where every runtime update matters, but every tiny movement should not
+necessarily hit the SD card.
+
+Default stream settings:
+
+- `Minimum delta`: `1` value unit
+- `Stream interval`: `3000` ms
+- `Stable delay`: `1000` ms
+
+When enabled, the state node:
+
+- updates `msg.state`, global context, and downstream change events normally;
+- writes immediately when the value has moved by at least `Minimum delta` and
+  the `Stream interval` allows a new write;
+- queues only the latest runtime value when updates arrive faster than the
+  write interval;
+- writes a small changed value after `Stable delay` if updates go quiet;
+- treats `Stable delay = 0` as disabled stable-value persistence.
 
 ## Upstream README
 

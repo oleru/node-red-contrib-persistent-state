@@ -625,3 +625,84 @@ test('state node reports non-json updates clearly', async function(t) {
     text: 'value is not JSON-compatible: undefined',
   });
 });
+
+test('stream values below minimum delta update runtime without persisting', async function(t) {
+  let stateDir = await makeStateDir(t);
+  let StateCtor = loadStateConstructor();
+  let node = new StateCtor(makeConfig(stateDir, {
+    defaultValue: '0',
+    streamValues: true,
+    minPersistDelta: '5',
+    streamSaveInterval: '0',
+    streamStableDelay: '0',
+  }));
+  await waitForInit();
+
+  await node.update(3, {});
+
+  assert.equal(node.value, 3);
+  let valueDir = persistentStore.getValueDir(stateDir, 'myNumber');
+  let recovered = await persistentStore.recover({valueDir, name: 'myNumber', type: 'num'});
+  assert.equal(recovered.payload.value, 0);
+});
+
+test('stream values persist immediately when minimum delta is reached', async function(t) {
+  let stateDir = await makeStateDir(t);
+  let StateCtor = loadStateConstructor();
+  let node = new StateCtor(makeConfig(stateDir, {
+    defaultValue: '0',
+    streamValues: true,
+    minPersistDelta: '5',
+    streamSaveInterval: '0',
+    streamStableDelay: '0',
+  }));
+  await waitForInit();
+
+  await node.update(5, {});
+
+  let valueDir = persistentStore.getValueDir(stateDir, 'myNumber');
+  let recovered = await persistentStore.recover({valueDir, name: 'myNumber', type: 'num'});
+  assert.equal(recovered.payload.value, 5);
+  assert.equal(node.lastPersistedValue, 5);
+});
+
+test('stream values persist a small stable value after the stable delay', async function(t) {
+  let stateDir = await makeStateDir(t);
+  let StateCtor = loadStateConstructor();
+  let node = new StateCtor(makeConfig(stateDir, {
+    defaultValue: '0',
+    streamValues: true,
+    minPersistDelta: '5',
+    streamSaveInterval: '0',
+    streamStableDelay: '20',
+  }));
+  await waitForInit();
+
+  await node.update(3, {});
+  await new Promise((resolve) => setTimeout(resolve, 45));
+
+  let valueDir = persistentStore.getValueDir(stateDir, 'myNumber');
+  let recovered = await persistentStore.recover({valueDir, name: 'myNumber', type: 'num'});
+  assert.equal(recovered.payload.value, 3);
+});
+
+test('stream values rate-limit writes and persist the latest queued value', async function(t) {
+  let stateDir = await makeStateDir(t);
+  let StateCtor = loadStateConstructor();
+  let node = new StateCtor(makeConfig(stateDir, {
+    defaultValue: '0',
+    streamValues: true,
+    minPersistDelta: '1',
+    streamSaveInterval: '50',
+    streamStableDelay: '0',
+  }));
+  await waitForInit();
+
+  await node.update(2, {});
+  await node.update(4, {});
+  await new Promise((resolve) => setTimeout(resolve, 75));
+
+  let valueDir = persistentStore.getValueDir(stateDir, 'myNumber');
+  let recovered = await persistentStore.recover({valueDir, name: 'myNumber', type: 'num'});
+  assert.equal(recovered.payload.value, 4);
+});

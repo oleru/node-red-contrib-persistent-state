@@ -4,6 +4,11 @@
   * Start next development cycle for high-frequency stream persistence controls,
     including configurable save cadence, value hysteresis, and stable-value
     handling.
+  * Add number-only `Stream values` configuration to the `shared-state` editor:
+    `Minimum delta`, `Stream interval`, and `Stable delay`.
+  * Apply stream persistence at runtime so fast numeric updates still flow
+    through immediately while disk writes are gated by delta, interval, and
+    quiet/stable delay.
 
 0.5.0 - 2026-09-09
 ==================
