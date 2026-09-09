@@ -60,7 +60,7 @@ different hardware variants. One system may represent a full 360 degree range
 with 360 pulses, while another may use a much higher pulse count. A fixed
 threshold in node configuration is therefore not always sufficient.
 
-The original discussion used searchlight position as a concrete case, but the
+The original discussion used a physical position-feedback test case, but the
 decision is about data categories:
 
 - Configuration and register-like values use `standard`.
@@ -82,17 +82,17 @@ current-value selection. This makes the standard policy about `value`, `prev`,
 `timestamp`, and the save throttle, while the planned robust store handles
 redundancy separately.
 
-The first expected production candidates from the MDC2022 raspPI case are:
+The first expected production candidates from the example flow-analysis case
+are:
 
-- `Horizontal_pos_act`
-- `Vertical_pos_act`
+- `Axis1_PositionActual`
+- `Axis2_PositionActual`
 
 Those are examples of physical position feedback and should not define the
 whole feature.
 
-The MDC2022 `myHoursOfUseLamp` case is an example of a non-critical statistic.
-It should remain standard state and can be slowed down by increasing
-`saveInterval`.
+The example `RuntimeHoursCounter` case is a non-critical statistic. It should
+remain standard state and can be slowed down by increasing `saveInterval`.
 
 ## Implementation Notes
 
@@ -123,6 +123,6 @@ only if the last successful checkpoint is older than the configured threshold.
 
 ## Related Analysis
 
-- `docs/MDC2022_RASPPI_WRITE_FREQUENCY_ANALYSIS.md`
+- `docs/EXAMPLE_FLOW_WRITE_FREQUENCY_ANALYSIS.md`
 - `docs/FILE_IO_FAILURE_ANALYSIS.md`
 - `docs/PERSISTENT_VALUE_STORE_DESIGN.md`

@@ -59,7 +59,7 @@
 ==================
 
   * Changed get/set shared-state node editor color from light green to a
-    sharper green so the Torka-maintained fork is easier to identify in flows.
+    sharper green so this maintained fork is easier to identify in flows.
   * Added a design plan for splitting per-state config from redundant
     checksum-protected runtime value storage.
   * Added an analysis of how `timestamp` and `history[].ts` currently affect

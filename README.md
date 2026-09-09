@@ -1,7 +1,7 @@
 node-red-contrib-persistent-state
 =================================
 
-Torka/MDC-maintained persistent shared-state nodes for Node-RED.
+Persistent shared-state nodes for Node-RED with hardened value storage.
 
 This repository is forked from
 [lorenwest/node-red-contrib-state](https://github.com/lorenwest/node-red-contrib-state),
@@ -10,7 +10,7 @@ starting at upstream commit
 (`node-red-contrib-state` 1.6.1).
 
 The first goal is to keep the existing Node-RED node types and flow-facing message
-shape compatible while hardening persistence for isolated, power-cycled MDC
+shape compatible while hardening persistence for isolated, power-cycled
 installations.
 
 ## Project Scope
@@ -19,8 +19,8 @@ This fork is intended to:
 
 - preserve the existing `shared-state`, `get-shared-state`, and `set-shared-state`
   node types;
-- remain compatible with existing Torka, Sealight, Neva and MDC flows during the
-  first migration phase;
+- remain compatible with existing shared-state flows during the first migration
+  phase;
 - document all material changes from the upstream baseline;
 - retain the original MIT license and copyright notice.
 

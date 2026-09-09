@@ -47,7 +47,7 @@ test('wrapPayload creates flat compact generation with checksum', function() {
 });
 
 test('state names are restricted to ASCII letters digits and underscore', function() {
-  assert.equal(store.getStateDir('/tmp/shared-state', 'Horizontal_pos_act'), path.join('/tmp/shared-state', 'Horizontal_pos_act'));
+  assert.equal(store.getStateDir('/tmp/shared-state', 'Axis1_PositionActual'), path.join('/tmp/shared-state', 'Axis1_PositionActual'));
   assert.throws(function() {
     store.getStateDir('/tmp/shared-state', 'horizontal-pos-act');
   }, /ASCII letters/);
@@ -129,7 +129,7 @@ test('value payload supports JSON-compatible scalar and tree values', async func
     {value: [1, 'two', false, {nested: ['x', 'y']}], type: 'obj'},
     {
       value: {
-        system: 'MDC',
+        system: 'example',
         enabled: true,
         limits: {min: -180, max: 180},
         points: [

@@ -2,10 +2,10 @@
   "name": "node-red-contrib-persistent-state",
   "author": "Loren West - github.com/lorenwest",
   "contributors": [
-    "Kronborg Solutions / Torka maintainers - github.com/oleru"
+    "node-red-contrib-persistent-state maintainers"
   ],
   "version": "0.5.0",
-  "description": "Torka/MDC-maintained persistent shared-state nodes for Node-RED",
+  "description": "Persistent shared-state nodes for Node-RED with hardened value storage",
   "license": "MIT",
   "homepage": "https://github.com/oleru/node-red-contrib-persistent-state",
   "bugs": {
@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "convert-units": "^2.3.4",
-    "is-valid-var-name": "^1.0.2",
     "lodash": "^4.17.15",
     "mkdirp": "^1.0.3"
   },
@@ -30,8 +29,6 @@
   },
   "keywords": [
     "node-red",
-    "torka",
-    "mdc",
     "state",
     "shared state",
     "persistent state",
