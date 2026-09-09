@@ -805,3 +805,59 @@ test('stream persistence runtime overrides can update only minimum delta', async
   assert.equal(node.getStreamSaveInterval(), 3000);
   assert.equal(node.getStreamStableDelay(), 1000);
 });
+
+test('stream persistence effective settings are exposed in global state', async function(t) {
+  let stateDir = await makeStateDir(t);
+  let StateCtor = loadStateConstructor();
+  let node = new StateCtor(makeConfig(stateDir, {
+    defaultValue: '0',
+    streamValues: true,
+    minPersistDelta: '10',
+    streamSaveInterval: '3000',
+    streamStableDelay: '1000',
+  }));
+  await waitForInit();
+
+  await node.update(3, {
+    streamPersistence: {
+      minimumDelta: 2,
+      streamInterval: -1,
+    },
+  });
+
+  assert.deepEqual(node.globalState.myNumber.streamPersistence, {
+    enabled: true,
+    minPersistDelta: 2,
+    streamSaveInterval: -1,
+    streamStableDelay: 1000,
+    runtimeOverrides: {
+      minPersistDelta: 2,
+      streamSaveInterval: -1,
+    },
+  });
+});
+
+test('stream persistence global state updates when only runtime settings change', async function(t) {
+  let stateDir = await makeStateDir(t);
+  let StateCtor = loadStateConstructor();
+  let node = new StateCtor(makeConfig(stateDir, {
+    defaultValue: '0',
+    streamValues: true,
+    minPersistDelta: '10',
+    streamSaveInterval: '3000',
+    streamStableDelay: '1000',
+  }));
+  await waitForInit();
+
+  await node.update(0, {
+    streamPersistence: {
+      minimumDelta: 4,
+    },
+  });
+
+  assert.equal(node.value, 0);
+  assert.equal(node.globalState.myNumber.streamPersistence.minPersistDelta, 4);
+  assert.deepEqual(node.globalState.myNumber.streamPersistence.runtimeOverrides, {
+    minPersistDelta: 4,
+  });
+});

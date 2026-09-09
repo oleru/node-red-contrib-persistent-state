@@ -321,6 +321,11 @@
    <code>streamInterval</code>, and <code>streamStableDelay</code> /
    <code>stableDelay</code>. Omitted settings keep their current value.
  </p>
+ <p>
+   The effective runtime/configured values can be read from global context as
+   <code>global.state.StateName.streamPersistence</code>, for example
+   <code>global.state.myHeading.streamPersistence</code>.
+ </p>
  <h4>Optional Metadata</h4>
  Expand the state definition with metadata. This can be used to guarantee a data type, convert units, and provide tags to help find state nodes.
  <ul>

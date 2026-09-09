@@ -199,6 +199,29 @@ also accepted. Runtime overrides stay active for that `shared-state` node until
 the node is redeployed or restarted. Only include the parameters that should
 change; omitted parameters keep their current runtime/configured value.
 
+The effective stream settings can be read from global context:
+
+```js
+global.state.StateName.streamPersistence
+global.state["StateName"].streamPersistence
+```
+
+Example shape:
+
+```json
+{
+  "enabled": true,
+  "minPersistDelta": 5,
+  "streamSaveInterval": -1,
+  "streamStableDelay": 1500,
+  "runtimeOverrides": {
+    "minPersistDelta": 5,
+    "streamSaveInterval": -1,
+    "streamStableDelay": 1500
+  }
+}
+```
+
 ## Upstream README
 
 The original upstream README content follows.
