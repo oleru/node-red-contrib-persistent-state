@@ -104,10 +104,16 @@ the field is left blank, the runtime uses the selected data type default:
 Number `0`, String `""`, Boolean `false`, and Object `null`. Filled Object
 defaults must be valid JSON.
 
+`v0.5.0` also adds an initial `factory defaults` node. It can validate and
+write `<sharedStateDir>/factory-defaults.json`, generate a template from active
+`shared-state` variables, and apply selected defaults by an explicit JSON
+command with `confirm: true`.
+
 New storage layout:
 
 ```text
 shared-state/
+  factory-defaults.json
   myNumber/
     config.json
     active.json
@@ -152,6 +158,32 @@ section below.
 If data type is specified, setting state will assure the correct data type is represented.
 
 State nodes with compatible units of measure can be chaned for unit of measure conversion.
+
+## Factory Defaults
+
+The `factory defaults` node is used for commissioning and controlled reset
+workflows. It lists active `shared-state` variables in the editor, can generate
+or validate `factory-defaults.json`, and accepts runtime JSON commands.
+
+Reset all states selected in the node:
+
+```json
+{
+  "command": "factoryReset",
+  "all": true,
+  "confirm": true
+}
+```
+
+Generate or extend the deployment defaults file:
+
+```json
+{"command":"generateTemplate","missingOnly":true}
+```
+
+Factory reset values are selected from `factory-defaults.json`, then from the
+state's configured `defaultValue`, then from the type default. Values such as
+`0`, `""`, `false`, and `null` are treated as explicit defaults.
 
 ## Getting State
 

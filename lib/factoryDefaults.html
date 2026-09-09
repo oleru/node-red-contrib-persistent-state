@@ -1,0 +1,298 @@
+<!--
+ The MIT License
+
+ Copyright (c) 2026, node-red-contrib-persistent-state maintainers
+
+ Permission is hereby granted, free of charge, to any person obtaining a copy
+ of this software and associated documentation files (the "Software"), to
+ deal in the Software without restriction, including without limitation the
+ rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+ sell copies of the Software, and to permit persons to whom the Software is
+ furnished to do so, subject to the following conditions:
+
+ The above copyright notice and this permission notice shall be included in
+ all copies or substantial portions of the Software.
+
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ IN THE SOFTWARE.
+-->
+
+<script type="text/javascript">
+  (function() {
+    function parseSavedStates(rawStates) {
+      if (!rawStates) {
+        return [];
+      }
+      try {
+        let parsed = JSON.parse(rawStates);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function typeDefault(dataType) {
+      if (dataType === 'num') {
+        return 0;
+      }
+      if (dataType === 'bool') {
+        return false;
+      }
+      if (dataType === 'obj') {
+        return null;
+      }
+      return '';
+    }
+
+    function defaultValueForState(state) {
+      if (state.defaultValue !== undefined && state.defaultValue !== null && state.defaultValue !== '') {
+        if (state.dataType === 'obj' && typeof state.defaultValue === 'string') {
+          try {
+            return JSON.parse(state.defaultValue);
+          } catch (e) {
+            return state.defaultValue;
+          }
+        }
+        return state.defaultValue;
+      }
+      return typeDefault(state.dataType);
+    }
+
+    function valueToEditor(value) {
+      if (value === undefined || value === null) {
+        return value === null ? 'null' : '';
+      }
+      if (typeof value === 'string') {
+        return value;
+      }
+      return JSON.stringify(value);
+    }
+
+    function parseEditorValue(text, dataType) {
+      if (text === '') {
+        return typeDefault(dataType);
+      }
+      if (dataType === 'num') {
+        return Number(text);
+      }
+      if (dataType === 'bool') {
+        let normalized = ('' + text).trim().toLowerCase();
+        if (normalized === 'true' || normalized === '1' || normalized === 'on') {
+          return true;
+        }
+        if (normalized === 'false' || normalized === '0' || normalized === 'off') {
+          return false;
+        }
+        return !!text;
+      }
+      if (dataType === 'obj') {
+        return JSON.parse(text);
+      }
+      return text;
+    }
+
+    function readRows() {
+      let rows = [];
+      $('#node-input-factory-state-list .factory-default-row').each(function() {
+        let row = $(this);
+        rows.push({
+          name: row.attr('data-state-name'),
+          dataType: row.attr('data-state-type') || 'str',
+          enabled: row.find('.factory-default-enabled').prop('checked'),
+          value: parseEditorValue(row.find('.factory-default-value').val(), row.attr('data-state-type') || 'str'),
+        });
+      });
+      return rows;
+    }
+
+    function renderRows(availableStates, savedStates) {
+      let savedByName = {};
+      savedStates.forEach(function(state) {
+        savedByName[state.name] = state;
+      });
+      let list = $('#node-input-factory-state-list').empty();
+      if (availableStates.length === 0) {
+        list.append('<div class="form-tips">No shared-state config nodes found in the current flow set.</div>');
+        return;
+      }
+      availableStates.forEach(function(state) {
+        let saved = savedByName[state.name] || {};
+        let value = Object.prototype.hasOwnProperty.call(saved, 'value') ? saved.value : defaultValueForState(state);
+        let enabled = saved.enabled !== false;
+        let row = $('<div class="factory-default-row" style="display:grid; grid-template-columns: 24px 1fr 80px 1.4fr; gap:8px; align-items:center; margin-bottom:6px;"></div>');
+        row.attr('data-state-name', state.name);
+        row.attr('data-state-type', state.dataType || 'str');
+        row.append('<input class="factory-default-enabled" type="checkbox" style="width:15px; margin:0;">');
+        row.find('.factory-default-enabled').prop('checked', enabled);
+        row.append($('<span></span>').text(state.name));
+        row.append($('<code></code>').text(state.dataType || 'str'));
+        row.append($('<input class="factory-default-value" type="text">').val(valueToEditor(value)));
+        list.append(row);
+      });
+    }
+
+    function loadValuesIntoRows(defaults) {
+      $('#node-input-factory-state-list .factory-default-row').each(function() {
+        let row = $(this);
+        let stateName = row.attr('data-state-name');
+        if (Object.prototype.hasOwnProperty.call(defaults, stateName)) {
+          row.find('.factory-default-value').val(valueToEditor(defaults[stateName]));
+          row.find('.factory-default-enabled').prop('checked', true);
+        }
+      });
+    }
+
+    RED.nodes.registerType('factory-defaults',{
+      category: 'common',
+      defaults: {
+        name: {value: ''},
+        useFile: {value: true},
+        states: {value: '[]'},
+      },
+      inputs: 1,
+      outputs: 1,
+      icon: 'font-awesome/fa-undo',
+      color: '#00B050',
+      label: function() {
+        return this.name || 'factory defaults';
+      },
+      paletteLabel: function() {
+        return 'factory defaults';
+      },
+      oneditsave: function() {
+        this.useFile = $('#node-input-useFile').prop('checked');
+        this.states = JSON.stringify(readRows());
+      },
+      oneditprepare: function() {
+        let node = this;
+        let savedStates = parseSavedStates(node.states);
+        let status = $('#node-input-factory-status');
+
+        function setStatus(text) {
+          status.text(text || '');
+        }
+
+        $.getJSON('shared-state/factory-defaults/states', function(result) {
+          renderRows(result.states || [], savedStates);
+        }).fail(function() {
+          setStatus('Unable to list shared-state nodes.');
+        });
+
+        $('#node-input-validate-file').on('click', function() {
+          $.getJSON('shared-state/factory-defaults/validate', function(result) {
+            setStatus(result.status + ': ' + (result.path || 'factory-defaults.json'));
+          }).fail(function() {
+            setStatus('Unable to validate factory-defaults.json.');
+          });
+        });
+
+        $('#node-input-load-file').on('click', function() {
+          $.getJSON('shared-state/factory-defaults/validate', function(result) {
+            if (result.ok && result.document && result.document.defaults) {
+              loadValuesIntoRows(result.document.defaults);
+              setStatus('Loaded ' + Object.keys(result.document.defaults).length + ' defaults from file.');
+            } else {
+              setStatus(result.status + ': ' + (result.message || 'factory-defaults.json'));
+            }
+          }).fail(function() {
+            setStatus('Unable to load factory-defaults.json.');
+          });
+        });
+
+        function writeTemplate(missingOnly) {
+          let states;
+          try {
+            states = readRows();
+          } catch (e) {
+            setStatus('Invalid editor value: ' + e.message);
+            return;
+          }
+          $.ajax({
+            url: 'shared-state/factory-defaults/template',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+              states: states,
+              missingOnly: missingOnly,
+            }),
+            success: function(result) {
+              setStatus('Wrote ' + Object.keys(result.document.defaults).length + ' defaults to ' + result.path);
+            },
+            error: function(xhr) {
+              let message = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Unable to write template.';
+              setStatus(message);
+            },
+          });
+        }
+
+        $('#node-input-generate-template').on('click', function() {
+          writeTemplate(false);
+        });
+        $('#node-input-generate-missing').on('click', function() {
+          writeTemplate(true);
+        });
+        $('#node-input-write-file').on('click', function() {
+          writeTemplate(false);
+        });
+      },
+    });
+  })();
+</script>
+
+<script type="text/x-red" data-template-name="factory-defaults">
+<div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag fa-fw"></i> Name</label>
+    <input type="text" id="node-input-name" placeholder="factory defaults">
+</div>
+
+<div class="form-row">
+    <label for="node-input-useFile">&nbsp;</label>
+    <input type="checkbox" id="node-input-useFile" style="display:inline-block; width:15px; vertical-align:baseline;">
+    <span>Use factory-defaults.json</span>
+</div>
+
+<div class="form-row">
+    <label><i class="fa fa-list fa-fw"></i> States</label>
+    <div style="display:inline-block; width:70%; vertical-align:top;" id="node-input-factory-state-list"></div>
+</div>
+
+<div class="form-row">
+    <label>&nbsp;</label>
+    <button type="button" class="red-ui-button" id="node-input-load-file">Load from file</button>
+    <button type="button" class="red-ui-button" id="node-input-validate-file">Validate file</button>
+    <button type="button" class="red-ui-button" id="node-input-generate-template">Generate template</button>
+    <button type="button" class="red-ui-button" id="node-input-generate-missing">Generate missing only</button>
+    <button type="button" class="red-ui-button" id="node-input-write-file">Write file</button>
+</div>
+
+<div class="form-tips" id="node-input-factory-status"></div>
+</script>
+
+<script type="text/x-red" data-help-name="factory-defaults">
+ <h4>Factory Defaults</h4>
+ <hr/>
+ <p>
+   This node validates and generates <code>factory-defaults.json</code>, and can
+   apply factory defaults by explicit JSON command.
+ </p>
+ <h4>Commands</h4>
+ <p>Reset selected states:</p>
+ <pre>{
+  "command": "factoryReset",
+  "all": true,
+  "confirm": true
+}</pre>
+ <p>Generate or validate the file:</p>
+ <pre>{"command":"generateTemplate","missingOnly":true}
+{"command":"validateFile"}</pre>
+ <p>
+   Factory reset values are selected from <code>factory-defaults.json</code>,
+   then the referenced <code>shared-state</code> node's <code>defaultValue</code>,
+   then the selected data type default.
+ </p>
+</script>

@@ -1,6 +1,8 @@
 # Factory Defaults Design
 
-Status: accepted design direction for `v0.5.0` development.
+Status: accepted design direction for `v0.5.0` development. Initial helper,
+Node-RED node, editor controls, file validation, template writing, and runtime
+commands are implemented.
 
 ## Goal
 
@@ -254,6 +256,10 @@ instead of being guessed or partially interpreted.
 5. Add batch validation and result reporting.
 6. Add tests for missing file, invalid JSON, invalid schema, missing state,
    falsy values, type conversion, Object defaults, and partial failures.
+
+Initial `v0.5.0` implementation covers this plan with `lib/factoryDefaultsStore.js`
+and the `factory-defaults` Node-RED node. Further UI polish can still be added
+without changing the file format or command contract.
 
 ## Accepted Decisions
 

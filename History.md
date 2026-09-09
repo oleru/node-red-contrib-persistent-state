@@ -20,6 +20,9 @@
   * Document the planned `factory-defaults` design node, deployment-facing
     `factory-defaults.json` format, runtime reset commands, batch validation,
     and Node-RED status behavior.
+  * Add the initial `factory defaults` node with file validation, template
+    generation, `factoryReset` / `generateTemplate` / `validateFile` runtime
+    commands, and batch reset through the existing durable value store.
 
 0.4.0 - 2026-09-08
 ==================
