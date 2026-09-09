@@ -325,6 +325,8 @@
    The effective runtime/configured values can be read from global context as
    <code>global.state.StateName.streamPersistence</code>, for example
    <code>global.state.myHeading.streamPersistence</code>.
+   Treat <code>global.state.*</code> as read-only; direct writes bypass
+   validation, change events, checksums, and disk persistence.
  </p>
  <h4>Optional Metadata</h4>
  Expand the state definition with metadata. This can be used to guarantee a data type, convert units, and provide tags to help find state nodes.

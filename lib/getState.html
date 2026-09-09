@@ -135,8 +135,15 @@
        <li><b>prev</b> - Previous state value</li>
        <li><b>timestamp</b> - Timestamp of the state change in Date.now() format</li>
        <li><b>history</b> - deprecated compatibility field. In this fork it is kept as an empty array; use <code>value</code>, <code>prev</code>, and <code>timestamp</code> for current state handling.</li>
+       <li><b>streamPersistence</b> - Effective stream persistence settings for number states. This is a read-only status view; change stream settings by sending <code>msg.streamPersistence</code> to a <code>set state</code> node.</li>
      </ul>
    </li>
  </ul>
+ <p>
+   The same state view is also available in global context as
+   <code>global.state.StateName</code>, for example
+   <code>global.state.myHeading</code>. Read from this object, but do not write
+   directly to it.
+ </p>
 
 </script>

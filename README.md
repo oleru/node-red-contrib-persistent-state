@@ -206,6 +206,13 @@ global.state.StateName.streamPersistence
 global.state["StateName"].streamPersistence
 ```
 
+Treat `global.state.*` as a read-only state view. Reading `value`, `prev`,
+`timestamp`, `persistenceError`, `config`, and `streamPersistence` is supported,
+but writing directly to global context bypasses type conversion, validation,
+change events, sequence updates, checksums, and disk persistence. Change values
+through a `set state` node, and change stream parameters with
+`msg.streamPersistence`.
+
 Example shape:
 
 ```json
