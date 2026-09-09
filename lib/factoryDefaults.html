@@ -198,6 +198,30 @@
         }
       }
 
+      function addStateName(name) {
+        if (isSharedStateName(name) && !seen[name]) {
+          seen[name] = true;
+          states.push({
+            id: name,
+            name: name,
+            dataType: 'str',
+            defaultValue: ''
+          });
+        }
+      }
+
+      function addVisibleStateLabels() {
+        $('.red-ui-flow-node').each(function() {
+          let node = $(this);
+          let icon = node.find('.red-ui-flow-node-icon-group text').first().text();
+          if (icon !== '\uf08b' && icon !== '\uf090') {
+            return;
+          }
+          let label = node.find('.red-ui-flow-node-label-text').first().text();
+          addStateName(label);
+        });
+      }
+
       if (RED.nodes.eachConfig) {
         RED.nodes.eachConfig(addState);
       }
@@ -215,6 +239,7 @@
         (RED.nodes.filterNodes({type: 'get-shared-state'}) || []).forEach(addStateUser);
         (RED.nodes.filterNodes({type: 'set-shared-state'}) || []).forEach(addStateUser);
       }
+      addVisibleStateLabels();
 
       states.sort(function(a, b) {
         return a.name.localeCompare(b.name);

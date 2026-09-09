@@ -32,6 +32,9 @@
   * Include active `get state` and `set state` nodes in the `defaults` editor
     scan so newly added state users can contribute their referenced
     `shared-state` configuration before deployment.
+  * Fall back to visible `get state` / `set state` canvas labels when
+    Node-RED has not yet exposed a newly edited state through the active editor
+    node model.
 
 0.4.0 - 2026-09-08
 ==================
