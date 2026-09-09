@@ -25,7 +25,7 @@
 <!-- Registration -->
 <script type="text/javascript">
   isValidName = function (value) {
-    let isValid = isValidES2015VarName(value);
+    let isValid = /^[A-Za-z_][A-Za-z0-9_]*$/.test(value || '');
     $('#node-config-input-valid').css({display: isValid ? 'none' : 'block'});
     return isValid;
   }
@@ -46,7 +46,6 @@
       numMax: {value:null},
       unit: {value:null},         // Valid unit defined in npm:convert-units
       saveInterval: {value: "0", required:true},
-      legacyValueUpdates: {value: true},
     },
     label: function() {
       if (this.lbl) {
@@ -120,7 +119,7 @@
 <div id="node-config-input-valid" style="display:none; margin-bottom: 10px;" class="form-tips">
     Error:
     <i class="fa fa-tag fa-fw"></i>
-    State Name is available from the JS node, and must be a valid variable name.
+    State Name is used as both Node-RED state key and folder name. Use only ASCII letters, digits, and underscore, starting with a letter or underscore.
 </div>
 
 <div class="form-row">
@@ -146,17 +145,6 @@
 <div class="form-tips">
     <span>Tip: <i style="width:24px; text-align:center" class="fa fa-area-chart"></i>
     This parameter can be used for reducing disk writes which can be useful if performance is critical and state changes quickly.</span>
-</div>
-
-<div class="form-row">
-    <label for="node-config-input-legacyValueUpdates"><i class="fa fa-save fa-fw"></i> Legacy file</label>
-    <input type="checkbox" id="node-config-input-legacyValueUpdates" style="display:inline-block; width:auto; vertical-align:top;">
-    <span>Update value/prev in legacy file</span>
-</div>
-
-<div class="form-tips">
-    <span>Tip: <i style="width:24px; text-align:center" class="fa fa-save"></i>
-    Disable this when the compact value store should be the only active value store and the legacy file should act as configuration metadata.</span>
 </div>
 
 <h4><i class="fa fa-cog"></i> Optional metadata</h4>
@@ -214,11 +202,10 @@
  <hr/>
  <h4>Elements</h4>
  <ul>
-   <li><b>State Name</b> - Name of the persistent shared state. This is the key used to identify the state, and must be a valid JavaScript variable name.</li>
+   <li><b>State Name</b> - Name of the persistent shared state. This is the key used to identify the state and the folder name used on disk. It must match <code>^[A-Za-z_][A-Za-z0-9_]*$</code>.</li>
    <li><b>Label</b> - The label that appears on the state node.</li>
    <li><b>History</b> - Deprecated compatibility setting. New nodes default to 0, state still saves normally, and the runtime keeps <code>history</code> empty.</li>
    <li><b>Saving interval</b> - Rate limit for saving state changes. Defaults to 0 when every state change is saved to disk.</li>
-   <li><b>Legacy file</b> - Keep this enabled to mirror <code>value</code> and <code>prev</code> into the original legacy state file. Disable it to make the legacy file configuration metadata only; the compact value store remains the active persistent value source.</li>
  </ul>
  <h4>Optional Metadata</h4>
  Expand the state definition with metadata. This can be used to guarantee a data type, convert units, and provide tags to help find state nodes.

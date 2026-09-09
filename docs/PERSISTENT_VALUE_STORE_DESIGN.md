@@ -1,18 +1,16 @@
 # Persistent Value Store Design
 
-Status: design plan and implementation notes for `0.4.0`. The compact value
-store is now integrated into the Node-RED state runtime, while some later config
-split and policy controls remain planned work.
+Status: implementation notes for `0.5.0`. The compact value store is integrated
+into the Node-RED state runtime using one directory per state.
 
 ## Goal
 
 The fork should keep the existing Node-RED node types and flow-facing behavior,
 but split state definition from durable runtime value storage.
 
-The current upstream-compatible state file should be treated primarily as a
-per-variable configuration and migration source. The current value should move to
-a small redundant value-store format that contains only the current value,
-metadata required for recovery, and a checksum over the persisted payload.
+Each state now has a directory below `sharedStateDir`. `config.json` contains
+per-variable configuration metadata, while `active.json` and `previous.json`
+contain compact redundant value generations.
 
 The main design requirement is power-loss tolerance: removing power at any point
 during a write must not destroy the last accepted value. On restart, the node
@@ -21,13 +19,13 @@ documented safe default, and it must log which path was used.
 
 ## Compatibility Contract
 
-The first implementation must preserve:
+Before a `v1.0.0` release, this fork prioritizes a clean storage model over
+upstream file compatibility. It still preserves:
 
 - Node-RED type names: `shared-state`, `get-shared-state`, `set-shared-state`.
 - Existing flow configuration nodes and references.
 - Existing `msg.payload` and `msg.state` shape for readers.
 - Existing `global.state.<name>` shape as far as practical.
-- Import of existing `./shared-state/<stateName>` files.
 - Existing type conversion, range, unit and label metadata.
 
 The implementation may add internal metadata fields, status messages and log
@@ -35,31 +33,32 @@ messages as long as existing flows keep working.
 
 ## File Roles
 
-### Config File
-
-The existing state file path should remain:
+Each state uses this directory:
 
 ```text
-<sharedStateDir>/<stateName>
+<sharedStateDir>/<StateName>/
 ```
 
-This file should become the human-readable state definition/config file. It may
-also act as the migration source for legacy installations.
+The `State Name` is also the directory name and must match:
 
-During the transition, each `shared-state` node has a `legacyValueUpdates`
-configuration flag, exposed in the editor as `Legacy file: Update value/prev in
-legacy file`.
+```text
+^[A-Za-z_][A-Za-z0-9_]*$
+```
 
-- Default `true`: preserve compatibility by mirroring `value`, `prev`,
-  `timestamp`, empty `history`, and `config` into the legacy file on persisted
-  value changes.
-- `false`: write the legacy file as config metadata only. The compact value
-  store is then the only active persisted value source.
+This allows ASCII letters, digits, and underscore only, with the first
+character limited to an ASCII letter or underscore. It deliberately excludes
+hyphen, `$`, spaces, dots, slashes, Unicode letters, and national characters.
 
-When `legacyValueUpdates` is `false`, the legacy file must include an explicit
-`valueStore.legacyValueUpdates: false` marker and must not include stale
-top-level `value`, `prev`, or `timestamp` fields. Startup recovery must not
-import a runtime value from such a config-only legacy file.
+### Config File
+
+The config file path is:
+
+```text
+<sharedStateDir>/<StateName>/config.json
+```
+
+This file is the human-readable state definition/config file. Runtime values do
+not belong in this file.
 
 Suggested config payload:
 
@@ -81,7 +80,9 @@ Suggested config payload:
     "unit": "",
     "saveInterval": "2000"
   },
-  "legacyImportedFrom": "upstream-1.6.1"
+  "valueStore": {
+    "layout": "state-directory-v1"
+  }
 }
 ```
 
@@ -89,24 +90,23 @@ Open point: decide whether the config file should be rewritten on every deploy
 or only when the config changes. The preferred default is only when the config
 changes.
 
-Current implementation note: config-only mode still rewrites the legacy file
-when a value is persisted, but it writes only metadata, not the runtime value.
-A later implementation can reduce this further by writing the config file only
-on deploy/config change.
+Current implementation note: `config.json` is still rewritten when a value is
+persisted, but it contains only metadata, not the runtime value. A later
+implementation can reduce this further by writing the config file only on
+deploy/config change.
 
 ### Value Directory
 
-Each state should get an internal value directory:
+Value generations live beside `config.json`:
 
 ```text
-<sharedStateDir>/.values/<stateName>/
+<sharedStateDir>/<StateName>/
 ```
 
-This keeps the public config filename stable while isolating recovery mechanics.
-
-Suggested files:
+Files:
 
 ```text
+config.json
 active.json
 previous.json
 staged.json.tmp
@@ -267,66 +267,56 @@ Validation must distinguish:
 These conditions should be visible in Node-RED logs and, where helpful, node
 status.
 
-## Legacy Import
+## Migration Sources
 
-The upstream `1.6.1` file contains:
+`v0.5.0` writes only the state-directory layout. During development it may read
+the previous `v0.4.0` value directory as an import source:
 
-```json
-{
-  "value": 7,
-  "prev": 6,
-  "timestamp": 1788787909167,
-  "history": [],
-  "config": {}
-}
+```text
+<sharedStateDir>/.values/<StateName>/active.json
+<sharedStateDir>/.values/<StateName>/previous.json
 ```
 
-On first startup with the new store:
+When a value is recovered from this layout, the runtime writes it back to:
 
-1. Read the legacy file from `<sharedStateDir>/<stateName>`.
-2. Validate `value` against the current config.
-3. Use the legacy `value` as the initial runtime value.
-4. Start sequence at `1`.
-5. Write `active.json`.
-6. Rewrite or preserve the top-level file as config according to the config-file
-   policy.
+```text
+<sharedStateDir>/<StateName>/active.json
+```
 
-If the top-level file has `valueStore.legacyValueUpdates: false`, skip legacy
-value import. That file is a config-only marker, not a recoverable value source.
+If an old top-level file exists at `<sharedStateDir>/<StateName>`, it blocks
+the new directory path. The runtime moves that file aside to
+`<sharedStateDir>/<StateName>.legacy.<timestamp>.json` before creating the
+state directory.
 
 Legacy `history` must not be treated as redundancy. As of `v0.3.0`, the field is
-kept in `msg.state`, global context, and persisted JSON for compatibility, but
-the runtime keeps it as an empty array and does not actively maintain it.
+kept in `msg.state` and global context for compatibility, but the runtime keeps
+it as an empty array and does not actively maintain it.
 
-This deliberately keeps the file and message shape familiar while removing
-history as a source of persistence decisions. Current value handling should use
-top-level `value`, `prev`, and `timestamp`. Future recovery must use the compact
-value-store generations, sequence numbers, and checksums instead of history.
+Upstream `1.6.1` top-level value-file import is not a priority before `v1.0.0`.
+The fork is currently used only by our projects, so development can favor a
+clean directory model over broad backwards compatibility.
 
-## Config Path Option
+## Root Path Option
 
-Add an optional global setting for explicit config/value roots:
+The supported root setting is:
 
 ```js
 functionGlobalContext: {
-  sharedStateDir: "/opt/data/node-red-shared-state",
-  sharedStateConfigDir: "/opt/data/node-red-shared-state/config",
-  sharedStateValueDir: "/opt/data/node-red-shared-state/values"
+  sharedStateDir: "/opt/data/node-red-shared-state"
 }
 ```
 
 Resolution order:
 
-1. Use `sharedStateConfigDir` and `sharedStateValueDir` when both are set.
-2. Otherwise use `sharedStateDir` with `.values` below it.
-3. Otherwise use `./shared-state` with `.values` below it.
+1. Use `sharedStateDir` when set.
+2. Otherwise use `./shared-state`.
 
-Open point: decide whether separate config/value directories are needed for
-Torka/Sealight/Neva, or whether a single `sharedStateDir` remains simpler.
+Separate config/value roots are deliberately avoided in `v0.5.0`; one
+per-state directory is simpler to inspect and back up on Raspberry Pi systems.
 
-## Planned v0.5.0 Directory Layout
+## v0.5.0 Directory Layout
 
-The next storage migration should move from the current transition layout:
+`v0.5.0` moves from the previous transition layout:
 
 ```text
 shared-state/
@@ -347,12 +337,12 @@ shared-state/
     previous.json
 ```
 
-The `State Name` should become both the Node-RED state key and the filesystem
+The `State Name` is both the Node-RED state key and the filesystem
 directory name. To keep that deterministic across Raspberry Pi/Linux, Windows,
 manual edits, backup tools, and shell scripts, the fork should reject special
 characters instead of converting names.
 
-Proposed rule:
+Rule:
 
 ```text
 ^[A-Za-z_][A-Za-z0-9_]*$
@@ -363,25 +353,18 @@ character limited to an ASCII letter or underscore. It deliberately excludes
 hyphen, `$`, spaces, dots, slashes, Unicode letters, and national characters,
 even though JavaScript would allow some of those forms.
 
-`v0.5.0` fallback and migration should be explicit:
+`v0.5.0` fallback and migration is explicit:
 
 1. Prefer the new per-state directory layout when `config.json` or
    `active.json` exists.
 2. If the new layout is missing, recover from the current `v0.4.0`
    `.values/<stateName>/active.json` and `.values/<stateName>/previous.json`.
-3. If compact generations are missing, import the legacy top-level
-   `<sharedStateDir>/<stateName>` file only when it is not marked config-only.
-4. After successful recovery from an old layout, write the new per-state
+3. After successful recovery from an old layout, write the new per-state
    directory files.
-5. Leave old files in place during the first `v0.5.0` migration so rollback to
+4. Leave old files in place during the first `v0.5.0` migration so rollback to
    `v0.4.0` remains possible.
-6. Log which source was used: new layout, v0.4 layout, legacy import, previous
+5. Log which source was used: new layout, v0.4 layout, previous
    generation, or default/missing.
-
-This is intentionally held out of `v0.4.0`. The current release closes with the
-compact value store integrated, legacy mirroring configurable, and rapid writes
-serialized/coalesced. The directory migration deserves its own implementation
-and test pass.
 
 ## Data Type Changes During Recovery
 
@@ -476,10 +459,11 @@ Responsibilities:
 - checksum wrapping and validation;
 - same-directory staged write;
 - active/previous generation recovery;
-- legacy import helpers.
+- strict state-name validation;
+- v0.4 value-directory migration helpers.
 
-Implemented in `v0.4.0` as `lib/persistentStore.js` with isolated
-`node:test` coverage. This module is not yet wired into the Node-RED state node.
+Implemented as `lib/persistentStore.js` with isolated `node:test` coverage and
+wired into the Node-RED state node.
 
 ### Phase 2: State Node Integration
 
@@ -493,16 +477,20 @@ Update `lib/state.js` to:
 - serialize writes per state;
 - log recovery conditions.
 
-Implemented in `v0.4.0` for the first migration-safe runtime path:
+Implemented runtime path:
 
 - writes compact value generations through `persistentStore`;
-- continues writing the legacy `<sharedStateDir>/<stateName>` file;
+- writes config metadata to `<sharedStateDir>/<StateName>/config.json`;
 - prefers valid compact generations during startup;
-- migrates a legacy state file into the compact store when no compact
-  generation exists;
+- migrates a `v0.4.0` `.values/<StateName>` directory into the state directory
+  layout when the new layout has no compact generation;
+- moves an old top-level `<sharedStateDir>/<StateName>` file aside if it blocks
+  directory creation;
 - recovers from `previous.json` when `active.json` is corrupt.
 - serializes overlapping writes and coalesces queued updates so only the latest
   runtime state is persisted after an in-flight write completes.
+- converts recovered values through the current data type configuration before
+  activating them.
 
 Remaining work in this phase is to improve visible Node-RED recovery/status
 messages.
@@ -511,14 +499,13 @@ messages.
 
 Add:
 
-- optional separate config/value directories;
 - node status for recovered/defaulted/corrupt cases;
 - platform-specific durability notes;
 - fault-injection tests for abrupt interruption.
 
 ### Phase 4: Release
 
-Before tagging `v0.2.0`:
+Before tagging the next release:
 
 - run storage tests on Windows;
 - run the package in local Node-RED 5 / Node.js 24;
@@ -529,13 +516,9 @@ Before tagging `v0.2.0`:
 
 ## Decisions Needed
 
-- Should the visible `<sharedStateDir>/<stateName>` file become config-only in
-  `0.2.0`, or should we first keep it unchanged and add value files beside it?
 - Is one previous generation enough, or do critical states need more than one?
 - Should missing/corrupt critical values inhibit operation, raise a visible
   alarm, or default?
-- Should config/value roots be separate settings, or is one `sharedStateDir`
-  sufficient for now?
 
 ## Accepted Decisions
 
@@ -546,3 +529,7 @@ Before tagging `v0.2.0`:
   changes.
 - `history` is not a recovery source. The compact value-store design will use
   explicit active/previous generations with checksums.
+- One `sharedStateDir` root with one directory per state is the active `v0.5.0`
+  layout.
+- `State Name` must match `^[A-Za-z_][A-Za-z0-9_]*$` and is used directly as
+  the filesystem directory name.

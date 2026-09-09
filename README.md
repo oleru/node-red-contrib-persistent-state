@@ -24,16 +24,14 @@ This fork is intended to:
 - document all material changes from the upstream baseline;
 - retain the original MIT license and copyright notice.
 
-Planned hardening work includes monotonic save gating, atomic file replacement,
+Hardening work includes monotonic save gating, atomic file replacement,
 validated recovery, last-known-good generations for critical state, and explicit
 logging of missing, corrupt, recovered and defaulted values.
 
-`v0.4.0` development has started with an internal `lib/persistentStore.js`
-module and isolated tests. The Node-RED state runtime now writes the compact
-value store, preferring valid compact generations during startup recovery. By
-default it also mirrors values to the legacy state file for compatibility; this
-can be disabled per state node when the legacy file should act as configuration
-metadata only.
+`v0.5.0` development uses one directory per state below `shared-state`. Each
+directory contains `config.json`, `active.json`, and `previous.json`. Runtime
+values are stored only in the compact value generations; `config.json` contains
+state definition metadata.
 
 See [Persistent Value Store Design](docs/PERSISTENT_VALUE_STORE_DESIGN.md) for
 the storage design plan. See [Timestamp Usage Analysis](docs/TIMESTAMP_USAGE_ANALYSIS.md)
@@ -54,10 +52,10 @@ For an installation pinned to the current development branch:
 npm install git+ssh://git@github.com/oleru/node-red-contrib-persistent-state.git#codex/v0.3.0
 ```
 
-For the current `v0.4.0` development branch:
+For the current `v0.5.0` development branch:
 
 ```sh
-npm install git+ssh://git@github.com/oleru/node-red-contrib-persistent-state.git#codex/v0.4.0
+npm install git+ssh://git@github.com/oleru/node-red-contrib-persistent-state.git#codex/v0.5.0
 ```
 
 For a tagged release:
@@ -88,19 +86,26 @@ kept as an empty array and is no longer used to decide whether a value should be
 saved. New state configurations default `historyCount` to `0`. Use `value`,
 `prev`, and `timestamp` for current and previous value handling.
 
-`v0.4.0` adds a `Legacy file` checkbox on each `shared-state` configuration.
-When enabled, the original `<sharedStateDir>/<stateName>` file is updated with
-`value`, `prev`, `timestamp`, empty `history`, and `config` on persisted value
-changes. When disabled, that legacy file is written as configuration metadata
-only, and the compact value store under `<sharedStateDir>/.values/<stateName>/`
-is the only active persisted value source. Keep the checkbox enabled during
-early migration if any external tooling reads the old file directly.
-
 `v0.5.0` development normalizes recovered values through the current
 `shared-state` data type configuration. For example, a stored numeric `7` is
 recovered as `"7"` after changing the node from Number to String. If the newest
 generation cannot be converted safely, recovery can try the previous compact
-generation before falling back to legacy import or defaults.
+generation before falling back to migration sources or defaults.
+
+`v0.5.0` also makes `State Name` the filesystem folder name. State names must
+match `^[A-Za-z_][A-Za-z0-9_]*$`: ASCII letters, digits, and underscore only,
+starting with a letter or underscore. Hyphens, `$`, spaces, dots, slashes,
+Unicode letters, and national characters are rejected.
+
+New storage layout:
+
+```text
+shared-state/
+  myNumber/
+    config.json
+    active.json
+    previous.json
+```
 
 ## Upstream README
 

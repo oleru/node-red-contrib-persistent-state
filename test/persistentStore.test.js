@@ -46,6 +46,22 @@ test('wrapPayload creates flat compact generation with checksum', function() {
   assert.equal(invalid.reason, 'checksum-mismatch');
 });
 
+test('state names are restricted to ASCII letters digits and underscore', function() {
+  assert.equal(store.getStateDir('/tmp/shared-state', 'Horizontal_pos_act'), path.join('/tmp/shared-state', 'Horizontal_pos_act'));
+  assert.throws(function() {
+    store.getStateDir('/tmp/shared-state', 'horizontal-pos-act');
+  }, /ASCII letters/);
+  assert.throws(function() {
+    store.getStateDir('/tmp/shared-state', 'my$value');
+  }, /ASCII letters/);
+  assert.throws(function() {
+    store.getStateDir('/tmp/shared-state', 'æøå');
+  }, /ASCII letters/);
+  assert.throws(function() {
+    store.getStateDir('/tmp/shared-state', '1startsWithDigit');
+  }, /ASCII letters/);
+});
+
 test('reader accepts previous wrapped payload/checksum generation format', function() {
   let legacyPayload = {
     schema: store.VALUE_SCHEMA,

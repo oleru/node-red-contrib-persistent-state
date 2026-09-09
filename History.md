@@ -7,6 +7,12 @@
     `shared-state` data type configuration before activating them. Converted
     values are rewritten as compact generations, and invalid active
     generations can fall back to a valid `previous.json`.
+  * Move storage to one directory per state:
+    `<sharedStateDir>/<StateName>/config.json`, `active.json`, and
+    `previous.json`.
+  * Restrict `State Name` to `^[A-Za-z_][A-Za-z0-9_]*$` so the Node-RED state
+    key can safely be used directly as the filesystem directory name.
+  * Remove the `Legacy file` editor option from active `v0.5.0` behavior.
 
 0.4.0 - 2026-09-08
 ==================

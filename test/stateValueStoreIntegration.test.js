@@ -91,15 +91,17 @@ async function waitForInit() {
   await new Promise((resolve) => setTimeout(resolve, 30));
 }
 
-test('state node migrates legacy state file into compact value store', async function(t) {
+test('state node migrates v0.4 value directory into state directory layout', async function(t) {
   let stateDir = await makeStateDir(t);
-  await fs.writeFile(path.join(stateDir, 'myNumber'), JSON.stringify({
+  let legacyValueDir = persistentStore.getLegacyValueDir(stateDir, 'myNumber');
+  await persistentStore.writeGeneration({
+    valueDir: legacyValueDir,
+    name: 'myNumber',
     value: 5,
-    prev: 4,
+    previous: 4,
     timestamp: 1000,
-    history: [{val: 5, ts: 1000}],
-    config: {},
-  }), 'utf8');
+    sequence: 1,
+  });
 
   let StateCtor = loadStateConstructor();
   let node = new StateCtor(makeConfig(stateDir));
@@ -107,17 +109,22 @@ test('state node migrates legacy state file into compact value store', async fun
 
   assert.equal(node.value, 5);
   assert.equal(node.prev, 4);
-  assert.equal(node.sequence, 1);
+  assert.equal(node.sequence, 2);
   assert.deepEqual(node.history, []);
 
   let valueDir = persistentStore.getValueDir(stateDir, 'myNumber');
   let recovered = await persistentStore.recover({valueDir, name: 'myNumber', type: 'num'});
   assert.equal(recovered.status, 'recovered');
   assert.equal(recovered.payload.value, 5);
-  assert.equal(recovered.payload.sequence, 1);
+  assert.equal(recovered.payload.sequence, 2);
+
+  let configPath = persistentStore.getStorePaths(valueDir).config;
+  let configFile = JSON.parse(await fs.readFile(configPath, 'utf8'));
+  assert.equal(configFile.name, 'myNumber');
+  assert.equal(configFile.valueStore.layout, 'state-directory-v1');
 });
 
-test('state node recovers compact value store before stale legacy state file', async function(t) {
+test('state node recovers compact value generation with config in same state directory', async function(t) {
   let stateDir = await makeStateDir(t);
   let valueDir = persistentStore.getValueDir(stateDir, 'myNumber');
   await persistentStore.writeGeneration({
@@ -131,10 +138,11 @@ test('state node recovers compact value store before stale legacy state file', a
     bootId: 'boot-a',
     writtenAt: 2000,
   });
-  await fs.writeFile(path.join(stateDir, 'myNumber'), JSON.stringify({
-    value: 1,
-    prev: 0,
-    timestamp: 1000,
+  let paths = persistentStore.getStorePaths(valueDir);
+  await fs.writeFile(paths.config, JSON.stringify({
+    schema: 'persistent-state.config.v1',
+    name: 'myNumber',
+    valueStore: {layout: 'state-directory-v1'},
     history: [],
     config: {},
   }), 'utf8');
@@ -331,7 +339,7 @@ test('state node coalesces concurrent writes to the latest runtime value', async
   assert.equal(node.persistAgain, false);
 });
 
-test('state node mirrors values to the legacy state file by default', async function(t) {
+test('state node writes config file without runtime value fields', async function(t) {
   let stateDir = await makeStateDir(t);
   let StateCtor = loadStateConstructor();
   let node = new StateCtor(makeConfig(stateDir));
@@ -339,61 +347,90 @@ test('state node mirrors values to the legacy state file by default', async func
 
   await node.update(11);
 
-  let legacyState = JSON.parse(await fs.readFile(path.join(stateDir, 'myNumber'), 'utf8'));
-  assert.equal(legacyState.value, 11);
-  assert.equal(legacyState.prev, '');
-  assert.equal(legacyState.timestamp, node.timestamp);
-  assert.deepEqual(legacyState.history, []);
-  assert.equal(legacyState.config.name, 'myNumber');
+  let valueDir = persistentStore.getValueDir(stateDir, 'myNumber');
+  let paths = persistentStore.getStorePaths(valueDir);
+  let configState = JSON.parse(await fs.readFile(paths.config, 'utf8'));
+  assert.equal(configState.schema, 'persistent-state.config.v1');
+  assert.equal(configState.name, 'myNumber');
+  assert.equal(configState.valueStore.layout, 'state-directory-v1');
+  assert.equal(Object.hasOwn(configState, 'value'), false);
+  assert.equal(Object.hasOwn(configState, 'prev'), false);
+  assert.equal(Object.hasOwn(configState, 'timestamp'), false);
+  assert.deepEqual(configState.history, []);
+  assert.equal(configState.config.name, 'myNumber');
 });
 
-test('state node can keep the legacy state file as config metadata only', async function(t) {
+test('state node moves old top-level state file aside before creating state directory', async function(t) {
+  let stateDir = await makeStateDir(t);
+  await fs.writeFile(path.join(stateDir, 'myNumber'), JSON.stringify({
+    value: 10,
+    prev: 9,
+    timestamp: 1000,
+    history: [],
+    config: {},
+  }), 'utf8');
+
+  let StateCtor = loadStateConstructor();
+  let node = new StateCtor(makeConfig(stateDir));
+  await waitForInit();
+
+  let statePath = persistentStore.getStateDir(stateDir, 'myNumber');
+  let stat = await fs.stat(statePath);
+  assert.equal(stat.isDirectory(), true);
+  let entries = await fs.readdir(stateDir);
+  assert.equal(entries.some((entry) => /^myNumber\.legacy\..*\.json$/.test(entry)), true);
+  assert.equal(node.__warnings.length, 1);
+  assert.match(node.__warnings[0], /Moved legacy state file aside/);
+});
+
+test('state node stores config metadata and value generations in one state directory', async function(t) {
   let stateDir = await makeStateDir(t);
   let StateCtor = loadStateConstructor();
-  let node = new StateCtor(makeConfig(stateDir, {legacyValueUpdates: false}));
+  let node = new StateCtor(makeConfig(stateDir));
   await waitForInit();
 
   await node.update(12);
 
-  let legacyState = JSON.parse(await fs.readFile(path.join(stateDir, 'myNumber'), 'utf8'));
-  assert.deepEqual(legacyState.valueStore, {
-    mode: 'compact',
-    legacyValueUpdates: false,
-  });
-  assert.equal(Object.hasOwn(legacyState, 'value'), false);
-  assert.equal(Object.hasOwn(legacyState, 'prev'), false);
-  assert.equal(Object.hasOwn(legacyState, 'timestamp'), false);
-  assert.deepEqual(legacyState.history, []);
-  assert.equal(legacyState.config.name, 'myNumber');
-
   let valueDir = persistentStore.getValueDir(stateDir, 'myNumber');
+  let paths = persistentStore.getStorePaths(valueDir);
+  assert.equal(valueDir, path.join(stateDir, 'myNumber'));
+  assert.equal(paths.config, path.join(stateDir, 'myNumber', 'config.json'));
+  assert.equal(paths.active, path.join(stateDir, 'myNumber', 'active.json'));
+  assert.equal(paths.previous, path.join(stateDir, 'myNumber', 'previous.json'));
+
+  let configState = JSON.parse(await fs.readFile(paths.config, 'utf8'));
+  assert.equal(Object.hasOwn(configState, 'value'), false);
+  assert.equal(configState.valueStore.layout, 'state-directory-v1');
+
   let recovered = await persistentStore.recover({valueDir, name: 'myNumber', type: 'num'});
   assert.equal(recovered.status, 'recovered');
   assert.equal(recovered.payload.value, 12);
 });
 
-test('state node does not recover a value from a config-only legacy state file', async function(t) {
+test('state node does not recover a value from config-only config file', async function(t) {
   let stateDir = await makeStateDir(t);
-  await fs.writeFile(path.join(stateDir, 'myNumber'), JSON.stringify({
+  let valueDir = persistentStore.getValueDir(stateDir, 'myNumber');
+  let paths = persistentStore.getStorePaths(valueDir);
+  await fs.mkdir(valueDir, {recursive: true});
+  await fs.writeFile(paths.config, JSON.stringify({
+    schema: 'persistent-state.config.v1',
+    name: 'myNumber',
     valueStore: {
-      mode: 'compact',
-      legacyValueUpdates: false,
+      layout: 'state-directory-v1',
     },
     history: [],
     config: {
       name: 'myNumber',
-      legacyValueUpdates: false,
     },
   }), 'utf8');
 
   let StateCtor = loadStateConstructor();
-  let node = new StateCtor(makeConfig(stateDir, {legacyValueUpdates: false}));
+  let node = new StateCtor(makeConfig(stateDir));
   await waitForInit();
 
   assert.equal(node.value, '');
   assert.equal(node.initialized, false);
-  assert.equal(node.__warnings.length, 1);
-  assert.match(node.__warnings[0], /config-only/);
+  assert.equal(node.__warnings.length, 0);
 });
 
 test('state node recovers previous value generation when active is corrupt', async function(t) {
