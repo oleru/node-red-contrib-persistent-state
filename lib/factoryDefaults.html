@@ -167,6 +167,9 @@
       if (RED.nodes.eachConfig) {
         RED.nodes.eachConfig(addState);
       }
+      if (RED.nodes.createCompleteNodeSet) {
+        (RED.nodes.createCompleteNodeSet({credentials: false, includeModuleConfig: true}) || []).forEach(addState);
+      }
       if (RED.nodes.eachNode) {
         RED.nodes.eachNode(addState);
       }

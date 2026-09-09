@@ -23,8 +23,9 @@
   * Add the initial `factory defaults` node with file validation, template
     generation, `factoryReset` / `generateTemplate` / `validateFile` runtime
     commands, and batch reset through the existing durable value store.
-  * Auto-fill blank legacy `History Keep` fields with `0` in the
-    `shared-state` editor so new nodes validate consistently.
+  * Default blank legacy `History Keep` fields to `"0"` in the
+    `shared-state` editor so new config nodes validate consistently even when
+    Node-RED skips falsy numeric default values while building the dialog.
   * Scan shared-state config nodes from the active Node-RED editor model when
     opening the `defaults` editor, with the server-side flow listing kept as a
     fallback.
