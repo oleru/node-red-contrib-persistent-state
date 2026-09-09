@@ -358,6 +358,8 @@ test('state node writes config file without runtime value fields', async functio
   assert.equal(Object.hasOwn(configState, 'timestamp'), false);
   assert.deepEqual(configState.history, []);
   assert.equal(configState.config.name, 'myNumber');
+  assert.equal(Object.hasOwn(configState.config, '__context'), false);
+  assert.equal(Object.hasOwn(configState.config, 'legacyValueUpdates'), false);
 });
 
 test('state node moves old top-level state file aside before creating state directory', async function(t) {
