@@ -151,6 +151,10 @@
       let states = [];
       let seen = {};
 
+      function isSharedStateName(value) {
+        return /^[A-Za-z_][A-Za-z0-9_]*$/.test(value || '');
+      }
+
       function addState(candidate) {
         if (!candidate || candidate.type !== 'shared-state' || !candidate.name || seen[candidate.name]) {
           return;
@@ -164,17 +168,52 @@
         });
       }
 
+      function addStateReference(stateId) {
+        if (!stateId || !RED.nodes.node) {
+          return false;
+        }
+        let state = RED.nodes.node(stateId);
+        if (state && state.type === 'shared-state') {
+          addState(state);
+          return true;
+        }
+        return false;
+      }
+
+      function addStateUser(candidate) {
+        if (!candidate || (candidate.type !== 'get-shared-state' && candidate.type !== 'set-shared-state')) {
+          return;
+        }
+        if (addStateReference(candidate.state)) {
+          return;
+        }
+        if (isSharedStateName(candidate.name) && !seen[candidate.name]) {
+          seen[candidate.name] = true;
+          states.push({
+            id: candidate.state || candidate.id,
+            name: candidate.name,
+            dataType: 'str',
+            defaultValue: ''
+          });
+        }
+      }
+
       if (RED.nodes.eachConfig) {
         RED.nodes.eachConfig(addState);
       }
       if (RED.nodes.createCompleteNodeSet) {
-        (RED.nodes.createCompleteNodeSet({credentials: false, includeModuleConfig: true}) || []).forEach(addState);
+        (RED.nodes.createCompleteNodeSet({credentials: false, includeModuleConfig: true}) || []).forEach(function(candidate) {
+          addState(candidate);
+          addStateUser(candidate);
+        });
       }
       if (RED.nodes.eachNode) {
-        RED.nodes.eachNode(addState);
+        RED.nodes.eachNode(addStateUser);
       }
       if (RED.nodes.filterNodes) {
         (RED.nodes.filterNodes({type: 'shared-state'}) || []).forEach(addState);
+        (RED.nodes.filterNodes({type: 'get-shared-state'}) || []).forEach(addStateUser);
+        (RED.nodes.filterNodes({type: 'set-shared-state'}) || []).forEach(addStateUser);
       }
 
       states.sort(function(a, b) {

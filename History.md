@@ -29,6 +29,9 @@
   * Scan shared-state config nodes from the active Node-RED editor model when
     opening the `defaults` editor, with the server-side flow listing kept as a
     fallback.
+  * Include active `get state` and `set state` nodes in the `defaults` editor
+    scan so newly added state users can contribute their referenced
+    `shared-state` configuration before deployment.
 
 0.4.0 - 2026-09-08
 ==================
