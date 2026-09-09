@@ -12,6 +12,10 @@ starting at upstream commit
 This fork keeps the existing Node-RED node types and flow-facing message shape,
 while hardening persistence for isolated, power-cycled installations.
 
+The repository may be made public to simplify installation from GitHub on
+controlled Node-RED deployments, but this fork is not published to npm or the
+Node-RED palette.
+
 ## Project Scope
 
 This fork is intended to:
@@ -27,7 +31,7 @@ Hardening work includes monotonic save gating, atomic file replacement,
 validated recovery, last-known-good generations for critical state, and explicit
 logging of missing, corrupt, recovered and defaulted values.
 
-`v0.5.0` uses one directory per state below `shared-state`. Each directory
+`v0.6.0` uses one directory per state below `shared-state`. Each directory
 contains `config.json`, `active.json`, and `previous.json`. Runtime values are
 stored only in the compact value generations; `config.json` contains state
 definition metadata, including the optional `defaultValue`.
@@ -44,19 +48,13 @@ To replace the original package:
 
 ```sh
 npm remove node-red-contrib-state
-npm install github:oleru/node-red-contrib-persistent-state#v0.5.0
+npm install github:oleru/node-red-contrib-persistent-state#v0.6.0
 ```
 
 For SSH-based installation:
 
 ```sh
-npm install git+ssh://git@github.com/oleru/node-red-contrib-persistent-state.git#v0.5.0
-```
-
-For the current development branch after `v0.5.0`:
-
-```sh
-npm install git+ssh://git@github.com/oleru/node-red-contrib-persistent-state.git#codex/v0.6.0
+npm install git+ssh://git@github.com/oleru/node-red-contrib-persistent-state.git#v0.6.0
 ```
 
 Restart Node-RED after installation.
@@ -360,7 +358,8 @@ discussion for further information.
 
 The original upstream package can be installed from the Node-RED palette as
 `node-red-contrib-state`. This maintained fork is installed from GitHub using
-the commands above until it is published through npm.
+the commands above and is not currently published through npm or the Node-RED
+palette.
 
 ## License
 
