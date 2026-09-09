@@ -159,10 +159,10 @@
       icon: 'font-awesome/fa-undo',
       color: '#00B050',
       label: function() {
-        return this.name || 'factory defaults';
+        return this.name || 'defaults';
       },
       paletteLabel: function() {
-        return 'factory defaults';
+        return 'defaults';
       },
       oneditsave: function() {
         this.useFile = $('#node-input-useFile').prop('checked');
@@ -247,7 +247,7 @@
 <script type="text/x-red" data-template-name="factory-defaults">
 <div class="form-row">
     <label for="node-input-name"><i class="fa fa-tag fa-fw"></i> Name</label>
-    <input type="text" id="node-input-name" placeholder="factory defaults">
+    <input type="text" id="node-input-name" placeholder="defaults">
 </div>
 
 <div class="form-row">
