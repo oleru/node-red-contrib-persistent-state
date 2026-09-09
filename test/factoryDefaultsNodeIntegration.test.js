@@ -89,6 +89,8 @@ function makeRED(context, options) {
       functionGlobalContext: {
         sharedStateDir: context.get('sharedStateDir'),
       },
+      userDir: options && options.userDir,
+      flowFile: options && options.flowFile,
     },
     __constructors: constructors,
     __configNodes: configNodes,
@@ -355,4 +357,34 @@ test('factory-defaults admin endpoint lists shared-state nodes from active flows
     dataType: 'num',
     defaultValue: '7',
   }]);
+});
+
+test('factory-defaults admin endpoint lists shared-state nodes from flows.json fallback', async function(t) {
+  let userDir = await makeStateDir(t);
+  await fs.writeFile(path.join(userDir, 'flows.json'), JSON.stringify([
+    {id: 'tab-1', type: 'tab', label: 'Flow 1'},
+    {
+      id: 'state-1',
+      type: 'shared-state',
+      name: 'myNumber',
+      dataType: 'str',
+      defaultValue: '',
+    },
+  ]), 'utf8');
+
+  let context = makeContext('/tmp/shared-state');
+  let RED = makeRED(context, {
+    userDir: userDir,
+  });
+  require('../lib/factoryDefaults')(RED);
+
+  let body;
+  RED.__routes.get['/shared-state/factory-defaults/states']({}, {
+    json(payload) {
+      body = payload;
+    },
+  });
+
+  assert.equal(body.states.length, 1);
+  assert.equal(body.states[0].name, 'myNumber');
 });
