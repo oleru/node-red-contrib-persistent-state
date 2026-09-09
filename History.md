@@ -35,6 +35,11 @@
   * Fall back to visible `get state` / `set state` canvas labels when
     Node-RED has not yet exposed a newly edited state through the active editor
     node model.
+  * Report missing `shared-state` config references on `get state` and
+    `set state` nodes as explicit node errors/status instead of leaking
+    `undefined` or null-reference errors.
+  * Report invalid numeric updates with the affected state name and original
+    value before persistence validation runs.
 
 0.4.0 - 2026-09-08
 ==================

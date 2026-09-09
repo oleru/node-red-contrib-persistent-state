@@ -584,3 +584,44 @@ test('state node recovers previous value generation when active is corrupt', asy
   assert.equal(node.__warnings.length, 1);
   assert.match(node.__warnings[0], /previous value generation/);
 });
+
+test('state node reports invalid numeric updates clearly', async function(t) {
+  let stateDir = await makeStateDir(t);
+  let StateCtor = loadStateConstructor();
+  let node = new StateCtor(makeConfig(stateDir, {defaultValue: '3'}));
+  await waitForInit();
+
+  await node.update('', {});
+
+  assert.equal(node.value, 3);
+  assert.deepEqual(node.__errors, [
+    'Invalid value for shared-state "myNumber": expected a finite number, got ""',
+  ]);
+  assert.deepEqual(node.__status, {
+    fill: 'red',
+    shape: 'ring',
+    text: 'expected a finite number, got ""',
+  });
+});
+
+test('state node reports non-json updates clearly', async function(t) {
+  let stateDir = await makeStateDir(t);
+  let StateCtor = loadStateConstructor();
+  let node = new StateCtor(makeConfig(stateDir, {
+    dataType: 'obj',
+    defaultValue: '{"ok":true}',
+  }));
+  await waitForInit();
+
+  await node.update(undefined, {});
+
+  assert.deepEqual(node.value, {ok: true});
+  assert.deepEqual(node.__errors, [
+    'Invalid value for shared-state "myNumber": value is not JSON-compatible: undefined',
+  ]);
+  assert.deepEqual(node.__status, {
+    fill: 'red',
+    shape: 'ring',
+    text: 'value is not JSON-compatible: undefined',
+  });
+});
