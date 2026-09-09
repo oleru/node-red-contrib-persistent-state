@@ -34,8 +34,10 @@ values are stored only in the compact value generations; `config.json` contains
 state definition metadata, including the optional `defaultValue`.
 
 See [Persistent Value Store Design](docs/PERSISTENT_VALUE_STORE_DESIGN.md) for
-the storage design plan. See [Timestamp Usage Analysis](docs/TIMESTAMP_USAGE_ANALYSIS.md)
-for timestamp, history, and `saveInterval` behavior.
+the storage design plan. See [Factory Defaults Design](docs/FACTORY_DEFAULTS_DESIGN.md)
+for the planned factory reset and deployment-default workflow. See
+[Timestamp Usage Analysis](docs/TIMESTAMP_USAGE_ANALYSIS.md) for timestamp,
+history, and `saveInterval` behavior.
 
 ## Installation From GitHub
 

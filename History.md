@@ -17,6 +17,9 @@
     runtime uses the selected type default: Number `0`, String `""`, Boolean
     `false`, and Object `null`. Defaults are only used when no valid persisted
     value can be recovered.
+  * Document the planned `factory-defaults` design node, deployment-facing
+    `factory-defaults.json` format, runtime reset commands, batch validation,
+    and Node-RED status behavior.
 
 0.4.0 - 2026-09-08
 ==================
