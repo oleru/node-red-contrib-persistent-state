@@ -1,3 +1,10 @@
+0.6.0 - Unreleased
+==================
+
+  * Start next development cycle for high-frequency stream persistence controls,
+    including configurable save cadence, value hysteresis, and stable-value
+    handling.
+
 0.5.0 - 2026-09-09
 ==================
 
