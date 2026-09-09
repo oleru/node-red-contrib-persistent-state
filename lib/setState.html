@@ -137,4 +137,28 @@
    <li><b>Provide output</b> - Place an output handle on the node for connecting to downstream nodes</li>
    <li><b>Fire on</b> - The current state will be sent on either or both of two events when <i>Provide output</i> is checked.  If <i>Initializing</i> is selected this flow will be triggered on initialization only.  If <i>State Change</i> is selected then it will be triggered on state change only. When <i>Both</i> is selected it will trigger on either.  Updating from earlier versions will result in <i>Both</i> being selected if <i>Init</i> was previously checked, or <i>State Change</i> if not, so that original behavior is maintained.</li>
  </ul>
+ <h4>Runtime Stream Parameters</h4>
+ <p>
+   When the referenced <code>shared-state</code> node has <b>Stream values</b>
+   enabled, each input message may override one or more stream persistence
+   settings with <code>msg.streamPersistence</code>. The override remains active
+   until the flow is redeployed or Node-RED is restarted.
+ </p>
+ <pre>{
+  "payload": 42,
+  "streamPersistence": {
+    "minimumDelta": 5,
+    "streamInterval": 3000,
+    "stableDelay": 1000
+  }
+}</pre>
+ <ul>
+   <li><b>Minimum delta</b> - <code>minimumDelta</code> or <code>minPersistDelta</code>. Minimum absolute change from the last persisted value before the delta rule can write. Must be <code>0</code> or greater.</li>
+   <li><b>Stream interval</b> - <code>streamInterval</code> or <code>streamSaveInterval</code>. Minimum milliseconds between delta writes. Use <code>-1</code> to disable delta writes, <code>0</code> for immediate write when the delta rule matches, or a positive value to rate-limit writes.</li>
+   <li><b>Stable delay</b> - <code>stableDelay</code> or <code>streamStableDelay</code>. Milliseconds a changed value must remain current before the stable rule writes it. Use <code>-1</code> to disable stable writes, <code>0</code> for immediate write when the stable rule matches, or a positive value to wait for stability.</li>
+ </ul>
+ <p>
+   The message does not need to include all three parameters. Omitted settings
+   keep their current runtime value.
+ </p>
 </script>
