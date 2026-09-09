@@ -24,10 +24,14 @@ function makeContext(sharedStateDir) {
   };
 }
 
-function makeRED(context) {
+function makeRED(context, options) {
   let constructors = {};
   let nodes = {};
   let configNodes = [];
+  let routes = {
+    get: {},
+    post: {},
+  };
   return {
     nodes: {
       registerType(name, ctor) {
@@ -66,10 +70,15 @@ function makeRED(context) {
       eachConfig(callback) {
         configNodes.forEach(callback);
       },
+      getFlows: options && options.getFlows,
     },
     httpAdmin: {
-      get() {},
-      post() {},
+      get(route, permission, handler) {
+        routes.get[route] = handler;
+      },
+      post(route, permission, handler) {
+        routes.post[route] = handler;
+      },
     },
     auth: {
       needsPermission() {
@@ -83,6 +92,7 @@ function makeRED(context) {
     },
     __constructors: constructors,
     __configNodes: configNodes,
+    __routes: routes,
   };
 }
 
@@ -310,4 +320,39 @@ test('factory-defaults node generates template from active shared states', async
   let fileResult = await factoryDefaultsStore.readFactoryDefaults(stateDir);
   assert.equal(fileResult.ok, true);
   assert.equal(fileResult.document.defaults.myNumber, 5);
+});
+
+test('factory-defaults admin endpoint lists shared-state nodes from active flows', async function() {
+  let context = makeContext('/tmp/shared-state');
+  let RED = makeRED(context, {
+    getFlows() {
+      return {
+        flows: [
+          {id: 'tab-1', type: 'tab', label: 'Flow 1'},
+          {
+            id: 'state-1',
+            type: 'shared-state',
+            name: 'myNumber',
+            dataType: 'num',
+            defaultValue: '7',
+          },
+        ],
+      };
+    },
+  });
+  require('../lib/factoryDefaults')(RED);
+
+  let body;
+  RED.__routes.get['/shared-state/factory-defaults/states']({}, {
+    json(payload) {
+      body = payload;
+    },
+  });
+
+  assert.deepEqual(body.states, [{
+    id: 'state-1',
+    name: 'myNumber',
+    dataType: 'num',
+    defaultValue: '7',
+  }]);
 });
