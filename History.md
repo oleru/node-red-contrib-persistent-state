@@ -1,4 +1,4 @@
-0.5.0 - Unreleased
+0.5.0 - 2026-09-09
 ==================
 
   * Start next development cycle for per-state directory layout and explicit
@@ -17,7 +17,7 @@
     runtime uses the selected type default: Number `0`, String `""`, Boolean
     `false`, and Object `null`. Defaults are only used when no valid persisted
     value can be recovered.
-  * Document the planned `factory-defaults` design node, deployment-facing
+  * Document the implemented `factory-defaults` design node, deployment-facing
     `factory-defaults.json` format, runtime reset commands, batch validation,
     and Node-RED status behavior.
   * Add the initial `factory defaults` node with file validation, template
@@ -40,6 +40,8 @@
     `undefined` or null-reference errors.
   * Report invalid numeric updates with the affected state name and original
     value before persistence validation runs.
+  * Clean up README and factory-defaults documentation for the `v0.5.0`
+    release.
 
 0.4.0 - 2026-09-08
 ==================

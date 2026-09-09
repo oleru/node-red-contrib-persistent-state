@@ -9,9 +9,8 @@ starting at upstream commit
 [`61e3964a03d92a0527c7ea353b6f17c8f610e23b`](https://github.com/lorenwest/node-red-contrib-state/commit/61e3964a03d92a0527c7ea353b6f17c8f610e23b)
 (`node-red-contrib-state` 1.6.1).
 
-The first goal is to keep the existing Node-RED node types and flow-facing message
-shape compatible while hardening persistence for isolated, power-cycled
-installations.
+This fork keeps the existing Node-RED node types and flow-facing message shape,
+while hardening persistence for isolated, power-cycled installations.
 
 ## Project Scope
 
@@ -19,8 +18,8 @@ This fork is intended to:
 
 - preserve the existing `shared-state`, `get-shared-state`, and `set-shared-state`
   node types;
-- remain compatible with existing shared-state flows during the first migration
-  phase;
+- keep the existing flow-facing node contracts stable during the pre-1.0
+  migration phase;
 - document all material changes from the upstream baseline;
 - retain the original MIT license and copyright notice.
 
@@ -28,42 +27,36 @@ Hardening work includes monotonic save gating, atomic file replacement,
 validated recovery, last-known-good generations for critical state, and explicit
 logging of missing, corrupt, recovered and defaulted values.
 
-`v0.5.0` development uses one directory per state below `shared-state`. Each
-directory contains `config.json`, `active.json`, and `previous.json`. Runtime
-values are stored only in the compact value generations; `config.json` contains
-state definition metadata, including the optional `defaultValue`.
+`v0.5.0` uses one directory per state below `shared-state`. Each directory
+contains `config.json`, `active.json`, and `previous.json`. Runtime values are
+stored only in the compact value generations; `config.json` contains state
+definition metadata, including the optional `defaultValue`.
 
 See [Persistent Value Store Design](docs/PERSISTENT_VALUE_STORE_DESIGN.md) for
-the storage design plan. See [Factory Defaults Design](docs/FACTORY_DEFAULTS_DESIGN.md)
-for the planned factory reset and deployment-default workflow. See
+the storage design. See [Factory Defaults Design](docs/FACTORY_DEFAULTS_DESIGN.md)
+for the factory reset and deployment-default workflow. See
 [Timestamp Usage Analysis](docs/TIMESTAMP_USAGE_ANALYSIS.md) for timestamp,
 history, and `saveInterval` behavior.
 
 ## Installation From GitHub
 
-To replace the original package while keeping existing flows compatible:
+To replace the original package:
 
 ```sh
 npm remove node-red-contrib-state
-npm install git+ssh://git@github.com/oleru/node-red-contrib-persistent-state.git#codex/v0.2.0
+npm install github:oleru/node-red-contrib-persistent-state#v0.5.0
 ```
 
-For an installation pinned to the current development branch:
+For SSH-based installation:
 
 ```sh
-npm install git+ssh://git@github.com/oleru/node-red-contrib-persistent-state.git#codex/v0.3.0
+npm install git+ssh://git@github.com/oleru/node-red-contrib-persistent-state.git#v0.5.0
 ```
 
-For the current `v0.5.0` development branch:
+For the current development branch after `v0.5.0`:
 
 ```sh
-npm install git+ssh://git@github.com/oleru/node-red-contrib-persistent-state.git#codex/v0.5.0
-```
-
-For a tagged release:
-
-```sh
-npm install github:oleru/node-red-contrib-persistent-state#v0.2.0
+npm install git+ssh://git@github.com/oleru/node-red-contrib-persistent-state.git#codex/v0.6.0
 ```
 
 Restart Node-RED after installation.
@@ -88,7 +81,7 @@ kept as an empty array and is no longer used to decide whether a value should be
 saved. New state configurations default `historyCount` to `0`. Use `value`,
 `prev`, and `timestamp` for current and previous value handling.
 
-`v0.5.0` development normalizes recovered values through the current
+`v0.5.0` normalizes recovered values through the current
 `shared-state` data type configuration. For example, a stored numeric `7` is
 recovered as `"7"` after changing the node from Number to String. If the newest
 generation cannot be converted safely, recovery can try the previous compact
@@ -120,6 +113,41 @@ shared-state/
     previous.json
 ```
 
+### v0.5.0 Runtime Files
+
+Each state directory contains:
+
+- `config.json` - state metadata from the `shared-state` config node, including
+  data type, unit fields, tags, and `defaultValue`;
+- `active.json` - newest validated runtime value generation;
+- `previous.json` - previous validated runtime value generation, used as the
+  first recovery fallback if `active.json` is missing, corrupt, or invalid for
+  the current data type.
+
+The compact value files contain only dynamic runtime data:
+
+```json
+{
+  "value": 14,
+  "previous": 7,
+  "sequence": 12,
+  "timestamp": 1788871747022,
+  "checksum": "..."
+}
+```
+
+The checksum is SHA-256 over the canonical JSON payload without the checksum
+field. It is used for integrity checking and generation recovery, not for
+security or access control.
+
+### Error Reporting
+
+The fork reports common state errors as explicit Node-RED node errors and
+statuses. Missing config references, invalid numeric values, non-JSON-compatible
+payloads, corrupt value files, and factory-default validation problems should
+show a clear message instead of leaking generic `undefined` or null-reference
+errors.
+
 ## Upstream README
 
 The original upstream README content follows.
@@ -147,7 +175,7 @@ nodes, persist it, keep history, and provide state change triggers for flows.
 ## Data Typing
 
 State nodes can specify data types offering inbound type conversions, min/max
-limiting, and unit of measue awareness and conversion.
+limiting, and unit of measure awareness and conversion.
 
 ## Setting State
 
@@ -157,11 +185,11 @@ section below.
 
 If data type is specified, setting state will assure the correct data type is represented.
 
-State nodes with compatible units of measure can be chaned for unit of measure conversion.
+State nodes with compatible units of measure can be chained for unit of measure conversion.
 
 ## Factory Defaults
 
-The `factory defaults` node is used for commissioning and controlled reset
+The `defaults` node is used for commissioning and controlled reset
 workflows. It lists active `shared-state` variables in the editor, can generate
 or validate `factory-defaults.json`, and accepts runtime JSON commands.
 
@@ -203,7 +231,7 @@ any metadata defined on the state node such as data type, unit of measure, etc.
 
 ### Shared State with Global Context
 
-The global context object contains a _state_ element - an object containg the current state 
+The global context object contains a _state_ element - an object containing the current state 
 and history for all state elements in all flows. This is available for all function and
 custom nodes needing to use logical state to perform their task.
 
@@ -247,13 +275,11 @@ discussion for further information.
 
 * [Representing Binary State with Confidence](https://github.com/lorenwest/node-red-contrib-state/wiki/Binary-State-with-External-Validation)
 
-## Installation
+## Historical Upstream Installation
 
-1. Open the Node-RED dashboard
-1. Select the _Manage Pallete_ menu item
-1. Select the _Install_ tab
-1. Enter `node-red-contrib-state` into the search
-1. Press the `install` button for this module
+The original upstream package can be installed from the Node-RED palette as
+`node-red-contrib-state`. This maintained fork is installed from GitHub using
+the commands above until it is published through npm.
 
 ## License
 

@@ -1,8 +1,8 @@
 # Factory Defaults Design
 
-Status: accepted design direction for `v0.5.0` development. Initial helper,
-Node-RED node, editor controls, file validation, template writing, and runtime
-commands are implemented.
+Status: implemented in `v0.5.0`. The helper module, Node-RED node, editor
+controls, file validation, template writing, and runtime commands are part of
+the package.
 
 ## Goal
 
@@ -100,10 +100,17 @@ Add a third Node-RED editor node:
 factory-defaults
 ```
 
-This node is a design and administration node, not a normal state value node.
+This node appears in the palette as `defaults`. It is a design and
+administration node, not a normal state value node.
 
-The editor should list all active `shared-state` config nodes in the current
-flow set. For each state, the user should be able to:
+The editor lists active `shared-state` variables in the current flow set. It
+collects candidates from the active Node-RED editor model, active
+`get state` / `set state` node references, and a visible-canvas fallback for
+state nodes that have been edited but not fully materialized in the editor model
+yet. The deployed server-side flow list remains a fallback when browser-side
+state discovery is unavailable.
+
+For each state, the user can:
 
 - include or exclude the state from this factory-default scenario;
 - see the state name and configured data type;
@@ -112,7 +119,12 @@ flow set. For each state, the user should be able to:
 - use the deterministic type default;
 - optionally copy the current runtime value into the factory-default field.
 
-The design node should expose these actions:
+If only a visible canvas label is available before deployment, the editor can
+list the state name but cannot know all config metadata yet. In that case it
+uses the deterministic type/default fallback until the real `shared-state`
+config node is available.
+
+The design node exposes these actions:
 
 - `Load from file`
 - `Validate file`
@@ -136,7 +148,7 @@ file is stable in source control and easy to inspect during deployment.
 
 ## Runtime Commands
 
-Factory reset should be available through JSON commands. A command may reset all
+Factory reset is available through JSON commands. A command may reset all
 states selected by the factory-defaults node or a specific list of states.
 
 Example:
@@ -161,8 +173,14 @@ Example for all states in the configured scenario:
 }
 ```
 
-The command must require an explicit confirmation field. The runtime should not
+The command requires an explicit confirmation field. The runtime does not
 perform a factory reset from an accidental or partial message.
+
+If confirmation is missing, the node reports a red status and emits:
+
+```text
+factoryReset requires confirm: true
+```
 
 ## Batch Behavior
 
@@ -177,7 +195,7 @@ For many values, factory reset should be handled as a batch:
    generation mechanism.
 7. Return a machine-readable result.
 
-Suggested result shape:
+Result shape:
 
 ```json
 {
@@ -188,16 +206,15 @@ Suggested result shape:
 }
 ```
 
-If some states fail and others succeed, `ok` should be `false`, with a clear
-`failed` list. The exact partial-write policy can be decided during
-implementation, but failures must never be silent.
+If some states fail and others succeed, `ok` is `false`, with a clear `failed`
+list. Failures are never silent.
 
 ## File Validation And Node Status
 
 If the user has enabled use of `factory-defaults.json`, the file becomes an
 explicit dependency and validation state must be visible in Node-RED.
 
-Recommended status mapping:
+Status mapping:
 
 ```text
 green dot   loaded and valid
@@ -245,21 +262,17 @@ The design node should make the file easy to generate, but runtime validation
 must still be strict. A malformed deployment file must produce a visible error
 instead of being guessed or partially interpreted.
 
-## Implementation Plan
+## Implementation Notes
 
-1. Add a small factory-default storage helper for reading, validating,
-   canonicalizing, and writing `factory-defaults.json`.
-2. Add admin endpoints for listing `shared-state` nodes, validating the file,
-   generating templates, and writing the file.
-3. Add the `factory-defaults` design node editor UI.
-4. Add runtime command handling with explicit confirmation.
-5. Add batch validation and result reporting.
-6. Add tests for missing file, invalid JSON, invalid schema, missing state,
-   falsy values, type conversion, Object defaults, and partial failures.
+The `v0.5.0` implementation uses `lib/factoryDefaultsStore.js` for
+`factory-defaults.json` validation/canonicalization and `lib/factoryDefaults.js`
+for the Node-RED node. Factory reset writes through the same durable
+`active.json` / `previous.json` value-store path as ordinary state changes, so
+checksums, sequence handling, type conversion, and recovery behavior stay
+consistent.
 
-Initial `v0.5.0` implementation covers this plan with `lib/factoryDefaultsStore.js`
-and the `factory-defaults` Node-RED node. Further UI polish can still be added
-without changing the file format or command contract.
+Further UI polish can still be added without changing the file format or
+command contract.
 
 ## Accepted Decisions
 
