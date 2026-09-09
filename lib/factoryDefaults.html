@@ -147,6 +147,39 @@
       });
     }
 
+    function collectEditorSharedStates() {
+      let states = [];
+      let seen = {};
+
+      function addState(candidate) {
+        if (!candidate || candidate.type !== 'shared-state' || !candidate.name || seen[candidate.name]) {
+          return;
+        }
+        seen[candidate.name] = true;
+        states.push({
+          id: candidate.id,
+          name: candidate.name,
+          dataType: candidate.dataType || 'str',
+          defaultValue: candidate.defaultValue
+        });
+      }
+
+      if (RED.nodes.eachConfig) {
+        RED.nodes.eachConfig(addState);
+      }
+      if (RED.nodes.eachNode) {
+        RED.nodes.eachNode(addState);
+      }
+      if (RED.nodes.filterNodes) {
+        (RED.nodes.filterNodes({type: 'shared-state'}) || []).forEach(addState);
+      }
+
+      states.sort(function(a, b) {
+        return a.name.localeCompare(b.name);
+      });
+      return states;
+    }
+
     RED.nodes.registerType('factory-defaults',{
       category: 'common',
       defaults: {
@@ -177,11 +210,16 @@
           status.text(text || '');
         }
 
-        $.getJSON('shared-state/factory-defaults/states', function(result) {
-          renderRows(result.states || [], savedStates);
-        }).fail(function() {
-          setStatus('Unable to list shared-state nodes.');
-        });
+        let editorStates = collectEditorSharedStates();
+        if (editorStates.length > 0) {
+          renderRows(editorStates, savedStates);
+        } else {
+          $.getJSON('shared-state/factory-defaults/states', function(result) {
+            renderRows(result.states || [], savedStates);
+          }).fail(function() {
+            setStatus('Unable to list shared-state nodes.');
+          });
+        }
 
         $('#node-input-validate-file').on('click', function() {
           $.getJSON('shared-state/factory-defaults/validate', function(result) {

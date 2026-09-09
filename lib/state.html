@@ -59,6 +59,10 @@
     },
     oneditprepare: function () {
       let node = this;
+      if (node.historyCount === undefined || node.historyCount === null || node.historyCount === '') {
+        node.historyCount = 0;
+        $('#node-config-input-historyCount').val(0);
+      }
 
       // Input validations
       $("#node-config-input-name").change(function () {
@@ -84,6 +88,16 @@
           $('#node-config-input-unit').val('');
         }
       });
+      $("#node-config-input-historyCount").change(function () {
+        if ($(this).val() === '') {
+          $(this).val(0);
+        }
+      });
+      setTimeout(function() {
+        if ($('#node-config-input-historyCount').val() === '') {
+          $('#node-config-input-historyCount').val(0);
+        }
+      }, 1);
 
       // Load the units dropdown. Response is a sorted array of units from convert-units.list()
       $.getJSON('shared-state/units', function(units) {
