@@ -386,6 +386,28 @@
    This node validates and generates <code>factory-defaults.json</code>, and can
    apply factory defaults by explicit JSON command.
  </p>
+ <h4>File Format</h4>
+ <p>
+   The file is stored as <code>shared-state/factory-defaults.json</code> and
+   maps each state name to a JSON-compatible default value.
+ </p>
+ <pre>{
+  "schema": "persistent-state.factory-defaults.v1",
+  "defaults": {
+    "myHeading": 0,
+    "myMode": "auto",
+    "myEnabled": false,
+    "mySettings": {
+      "limit": 10,
+      "steps": [1, 2, 3]
+    }
+  }
+}</pre>
+ <p>
+   Values may be strings, finite numbers, booleans, <code>null</code>, arrays,
+   or plain JSON objects. Explicit values such as <code>0</code>,
+   <code>""</code>, and <code>false</code> are valid factory defaults.
+ </p>
  <h4>Commands</h4>
  <p>Reset selected states:</p>
  <pre>{
