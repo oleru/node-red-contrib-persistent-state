@@ -38,6 +38,7 @@
       tags: {value:null},
       historyCount: {value: 0, required:true},
       dataType: {value:null},  // str, bool, num, obj
+      defaultValue: {value:null},
       boolType: {value:null},  // bool, num, str
       boolStrTrue: {value:null},  // On, Active, ...
       boolStrFalse: {value:null},  // Off, Inactive, ...
@@ -190,6 +191,16 @@
 </div>
 
 <div class="form-row">
+    <label for="node-config-input-defaultValue"><i class="fa fa-dot-circle-o fa-fw"></i> Default Value</label>
+    <input type="text" id="node-config-input-defaultValue" placeholder="type default">
+</div>
+
+<div class="form-tips">
+    <span>Tip: <i style="width:24px; text-align:center" class="fa fa-dot-circle-o"></i>
+    Used only when no valid persisted value exists. Leave empty for the type default: Number <code>0</code>, String <code>""</code>, Boolean <code>false</code>, Object <code>null</code>. Object values must be valid JSON when provided.</span>
+</div>
+
+<div class="form-row">
     <label for="node-config-input-tags"><i class="fa fa-tags fa-fw"></i> Tags</label>
     <input type="text" id="node-config-input-tags" placeholder="comma,separated,tags">
 </div>
@@ -206,6 +217,7 @@
    <li><b>Label</b> - The label that appears on the state node.</li>
    <li><b>History</b> - Deprecated compatibility setting. New nodes default to 0, state still saves normally, and the runtime keeps <code>history</code> empty.</li>
    <li><b>Saving interval</b> - Rate limit for saving state changes. Defaults to 0 when every state change is saved to disk.</li>
+   <li><b>Default Value</b> - Initial value used only when no valid persisted value exists. Blank uses the selected data type default.</li>
  </ul>
  <h4>Optional Metadata</h4>
  Expand the state definition with metadata. This can be used to guarantee a data type, convert units, and provide tags to help find state nodes.

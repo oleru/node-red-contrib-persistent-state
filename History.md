@@ -13,6 +13,10 @@
   * Restrict `State Name` to `^[A-Za-z_][A-Za-z0-9_]*$` so the Node-RED state
     key can safely be used directly as the filesystem directory name.
   * Remove the `Legacy file` editor option from active `v0.5.0` behavior.
+  * Add `Default Value` to `shared-state` configuration. When it is blank, the
+    runtime uses the selected type default: Number `0`, String `""`, Boolean
+    `false`, and Object `null`. Defaults are only used when no valid persisted
+    value can be recovered.
 
 0.4.0 - 2026-09-08
 ==================

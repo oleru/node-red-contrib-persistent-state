@@ -74,6 +74,7 @@ Suggested config payload:
     "tags": "",
     "historyCount": 0,
     "dataType": "num",
+    "defaultValue": "",
     "precision": "",
     "numMin": "",
     "numMax": "",
@@ -94,6 +95,28 @@ Current implementation note: `config.json` is still rewritten when a value is
 persisted, but it contains only metadata, not the runtime value. A later
 implementation can reduce this further by writing the config file only on
 deploy/config change.
+
+### Default Value
+
+`defaultValue` is configuration metadata, not a runtime value generation. It is
+used only when no valid persisted value can be recovered from `active.json`,
+`previous.json`, or a supported migration source.
+
+Blank `defaultValue` means the runtime chooses a deterministic type default:
+
+- Number: `0`
+- String: `""`
+- Boolean: `false`
+- Object: `null`
+
+When `defaultValue` is filled in, it is converted through the same configured
+data type handling as normal incoming state values. For Object states, a filled
+default must be valid JSON and may contain any JSON-compatible value, including
+arrays and nested object trees.
+
+When startup falls back to the default, the selected value is immediately written
+as `active.json` with `sequence: 1` and `previous: null`. Later restarts then
+recover it as an ordinary persisted value.
 
 ### Value Directory
 
@@ -247,9 +270,11 @@ Initial implementation rules:
 - Select the valid generation with the highest sequence.
 - If no value generation exists, try importing the legacy config/value file.
 - If legacy import succeeds, write a fresh `active.json`.
-- If no valid value exists, use the configured default if one exists.
-- If no valid value or default exists, initialize as the current code does, but
-  log a distinct "missing value" warning.
+- If no valid value exists, use the configured default value.
+- If no configured default value exists, use the type default: Number `0`,
+  String `""`, Boolean `false`, Object `null`.
+- If the configured default cannot be converted safely, report a default error
+  and leave the state uninitialized.
 
 Validation must distinguish:
 

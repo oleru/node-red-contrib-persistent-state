@@ -1,6 +1,6 @@
 # Upstream Baseline
 
-This repository is a Torka/MDC-maintained fork of:
+This repository is a maintained fork of:
 
 - Repository: https://github.com/lorenwest/node-red-contrib-state
 - Package: `node-red-contrib-state`
@@ -14,8 +14,7 @@ This repository is a Torka/MDC-maintained fork of:
 ## Fork Intent
 
 The fork keeps the existing Node-RED node type names and public message/state
-shape as the initial compatibility contract for Torka, Sealight, Neva and MDC
-flows.
+shape as the initial compatibility contract for existing shared-state flows.
 
 The baseline branch is:
 

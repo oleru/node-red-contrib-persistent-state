@@ -329,12 +329,12 @@ test('state node coalesces concurrent writes to the latest runtime value', async
   await node.update(1);
 
   assert.deepEqual(snapshots, [
-    {value: 1, prev: 0, sequence: 1},
-    {value: 3, prev: 2, sequence: 2},
+    {value: 1, prev: 0, sequence: 2},
+    {value: 3, prev: 2, sequence: 3},
   ]);
   assert.equal(node.value, 3);
   assert.equal(node.prev, 2);
-  assert.equal(node.sequence, 2);
+  assert.equal(node.sequence, 3);
   assert.equal(node.persistInFlight, false);
   assert.equal(node.persistAgain, false);
 });
@@ -381,8 +381,9 @@ test('state node moves old top-level state file aside before creating state dire
   assert.equal(stat.isDirectory(), true);
   let entries = await fs.readdir(stateDir);
   assert.equal(entries.some((entry) => /^myNumber\.legacy\..*\.json$/.test(entry)), true);
-  assert.equal(node.__warnings.length, 1);
+  assert.equal(node.__warnings.length, 2);
   assert.match(node.__warnings[0], /Moved legacy state file aside/);
+  assert.match(node.__warnings[1], /default value/);
 });
 
 test('state node stores config metadata and value generations in one state directory', async function(t) {
@@ -409,7 +410,127 @@ test('state node stores config metadata and value generations in one state direc
   assert.equal(recovered.payload.value, 12);
 });
 
-test('state node does not recover a value from config-only config file', async function(t) {
+test('state node initializes number from blank default when no value exists', async function(t) {
+  let stateDir = await makeStateDir(t);
+  let StateCtor = loadStateConstructor();
+  let node = new StateCtor(makeConfig(stateDir, {dataType: 'num'}));
+  await waitForInit();
+
+  assert.equal(node.value, 0);
+  assert.equal(node.prev, null);
+  assert.equal(node.initialized, true);
+  assert.match(node.__warnings.at(-1), /default value/);
+
+  let valueDir = persistentStore.getValueDir(stateDir, 'myNumber');
+  let recovered = await persistentStore.recover({valueDir, name: 'myNumber', type: ''});
+  assert.equal(recovered.status, 'recovered');
+  assert.equal(recovered.payload.value, 0);
+  assert.equal(recovered.payload.previous, null);
+  assert.equal(recovered.payload.sequence, 1);
+});
+
+test('state node initializes string from blank default when no value exists', async function(t) {
+  let stateDir = await makeStateDir(t);
+  let StateCtor = loadStateConstructor();
+  let node = new StateCtor(makeConfig(stateDir, {dataType: 'str'}));
+  await waitForInit();
+
+  assert.equal(node.value, '');
+  assert.equal(node.prev, null);
+  assert.equal(node.initialized, true);
+
+  let valueDir = persistentStore.getValueDir(stateDir, 'myNumber');
+  let recovered = await persistentStore.recover({valueDir, name: 'myNumber', type: ''});
+  assert.equal(recovered.payload.value, '');
+});
+
+test('state node initializes boolean from blank default when no value exists', async function(t) {
+  let stateDir = await makeStateDir(t);
+  let StateCtor = loadStateConstructor();
+  let node = new StateCtor(makeConfig(stateDir, {dataType: 'bool'}));
+  await waitForInit();
+
+  assert.equal(node.value, false);
+  assert.equal(node.prev, null);
+  assert.equal(node.initialized, true);
+
+  let valueDir = persistentStore.getValueDir(stateDir, 'myNumber');
+  let recovered = await persistentStore.recover({valueDir, name: 'myNumber', type: ''});
+  assert.equal(recovered.payload.value, false);
+});
+
+test('state node converts explicit default value through configured type', async function(t) {
+  let stateDir = await makeStateDir(t);
+  let StateCtor = loadStateConstructor();
+  let node = new StateCtor(makeConfig(stateDir, {
+    dataType: 'num',
+    defaultValue: '42',
+  }));
+  await waitForInit();
+
+  assert.equal(node.value, 42);
+  assert.equal(node.prev, null);
+  assert.equal(node.initialized, true);
+});
+
+test('state node initializes object from explicit JSON default value', async function(t) {
+  let stateDir = await makeStateDir(t);
+  let StateCtor = loadStateConstructor();
+  let node = new StateCtor(makeConfig(stateDir, {
+    dataType: 'obj',
+    defaultValue: '{"items":[1,2],"enabled":true}',
+  }));
+  await waitForInit();
+
+  assert.deepEqual(node.value, {items: [1, 2], enabled: true});
+  assert.equal(node.prev, null);
+  assert.equal(node.initialized, true);
+
+  let valueDir = persistentStore.getValueDir(stateDir, 'myNumber');
+  let recovered = await persistentStore.recover({valueDir, name: 'myNumber', type: ''});
+  assert.deepEqual(recovered.payload.value, {items: [1, 2], enabled: true});
+});
+
+test('state node reports invalid explicit object default value', async function(t) {
+  let stateDir = await makeStateDir(t);
+  let StateCtor = loadStateConstructor();
+  let node = new StateCtor(makeConfig(stateDir, {
+    dataType: 'obj',
+    defaultValue: '{"items":',
+  }));
+  await waitForInit();
+
+  assert.equal(node.initialized, false);
+  assert.equal(node.persistenceError.operation, 'default');
+  assert.equal(node.__errors.length, 2);
+  assert.match(String(node.__errors[0]), /default state value/);
+});
+
+test('state node recovers persisted value instead of applying configured default', async function(t) {
+  let stateDir = await makeStateDir(t);
+  let valueDir = persistentStore.getValueDir(stateDir, 'myNumber');
+  await persistentStore.writeGeneration({
+    valueDir,
+    name: 'myNumber',
+    value: 9,
+    previous: 8,
+    timestamp: 2000,
+    sequence: 3,
+  });
+
+  let StateCtor = loadStateConstructor();
+  let node = new StateCtor(makeConfig(stateDir, {
+    dataType: 'num',
+    defaultValue: '0',
+  }));
+  await waitForInit();
+
+  assert.equal(node.value, 9);
+  assert.equal(node.prev, 8);
+  assert.equal(node.sequence, 3);
+});
+
+test('state node initializes from default when only config file exists', async function(t) {
   let stateDir = await makeStateDir(t);
   let valueDir = persistentStore.getValueDir(stateDir, 'myNumber');
   let paths = persistentStore.getStorePaths(valueDir);
@@ -430,9 +551,10 @@ test('state node does not recover a value from config-only config file', async f
   let node = new StateCtor(makeConfig(stateDir));
   await waitForInit();
 
-  assert.equal(node.value, '');
-  assert.equal(node.initialized, false);
-  assert.equal(node.__warnings.length, 0);
+  assert.equal(node.value, 0);
+  assert.equal(node.prev, null);
+  assert.equal(node.initialized, true);
+  assert.match(node.__warnings[0], /default value/);
 });
 
 test('state node recovers previous value generation when active is corrupt', async function(t) {

@@ -31,7 +31,7 @@ logging of missing, corrupt, recovered and defaulted values.
 `v0.5.0` development uses one directory per state below `shared-state`. Each
 directory contains `config.json`, `active.json`, and `previous.json`. Runtime
 values are stored only in the compact value generations; `config.json` contains
-state definition metadata.
+state definition metadata, including the optional `defaultValue`.
 
 See [Persistent Value Store Design](docs/PERSISTENT_VALUE_STORE_DESIGN.md) for
 the storage design plan. See [Timestamp Usage Analysis](docs/TIMESTAMP_USAGE_ANALYSIS.md)
@@ -96,6 +96,11 @@ generation before falling back to migration sources or defaults.
 match `^[A-Za-z_][A-Za-z0-9_]*$`: ASCII letters, digits, and underscore only,
 starting with a letter or underscore. Hyphens, `$`, spaces, dots, slashes,
 Unicode letters, and national characters are rejected.
+
+`defaultValue` is used only when no valid persisted value can be recovered. When
+the field is left blank, the runtime uses the selected data type default:
+Number `0`, String `""`, Boolean `false`, and Object `null`. Filled Object
+defaults must be valid JSON.
 
 New storage layout:
 
