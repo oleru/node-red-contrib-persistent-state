@@ -25,7 +25,7 @@
 <!-- Registration -->
 <script type="text/javascript">
   isValidName = function (value) {
-    let isValid = isValidES2015VarName(value);
+    let isValid = /^[A-Za-z_][A-Za-z0-9_]*$/.test(value || '');
     $('#node-config-input-valid').css({display: isValid ? 'none' : 'block'});
     return isValid;
   }
@@ -36,8 +36,9 @@
       name: {value:"", required:true, validate:isValidName},
       lbl: {value:null},
       tags: {value:null},
-      historyCount: {value: 2, required:true},
+      historyCount: {value: "0", required:true},
       dataType: {value:null},  // str, bool, num, obj
+      defaultValue: {value:null},
       boolType: {value:null},  // bool, num, str
       boolStrTrue: {value:null},  // On, Active, ...
       boolStrFalse: {value:null},  // Off, Inactive, ...
@@ -46,6 +47,10 @@
       numMax: {value:null},
       unit: {value:null},         // Valid unit defined in npm:convert-units
       saveInterval: {value: "0", required:true},
+      streamValues: {value:false},
+      minPersistDelta: {value:"1"},
+      streamSaveInterval: {value:"3000"},
+      streamStableDelay: {value:"1000"},
     },
     label: function() {
       if (this.lbl) {
@@ -58,6 +63,10 @@
     },
     oneditprepare: function () {
       let node = this;
+      if (node.historyCount === undefined || node.historyCount === null || node.historyCount === '') {
+        node.historyCount = 0;
+        $('#node-config-input-historyCount').val(0);
+      }
 
       // Input validations
       $("#node-config-input-name").change(function () {
@@ -70,7 +79,29 @@
         $('.state-datatype').css({display:'none'});
         setTimeout(function() {
           $('.state-datatype-' + value).css({display:'inline-block'});
+          updateStreamPersistenceVisibility();
         },1);
+      });
+      function updateStreamPersistenceVisibility() {
+        let isNumber = ($('#node-config-input-dataType').val() || 'str') === 'num';
+        let isStream = $('#node-config-input-streamValues').is(':checked');
+        $('.state-stream-values-row').css({display: isNumber ? 'block' : 'none'});
+        $('.state-stream-values-config').css({display: isNumber && isStream ? 'block' : 'none'});
+      }
+      function defaultNumberInput(selector, value) {
+        if ($(selector).val() === '') {
+          $(selector).val(value);
+        }
+      }
+      $("#node-config-input-streamValues").change(updateStreamPersistenceVisibility);
+      $("#node-config-input-minPersistDelta").change(function () {
+        defaultNumberInput('#node-config-input-minPersistDelta', 1);
+      });
+      $("#node-config-input-streamSaveInterval").change(function () {
+        defaultNumberInput('#node-config-input-streamSaveInterval', 3000);
+      });
+      $("#node-config-input-streamStableDelay").change(function () {
+        defaultNumberInput('#node-config-input-streamStableDelay', 1000);
       });
       $("#node-config-input-boolType").change(function () {
         let value = $('#node-config-input-boolType').val() || 'bool';
@@ -83,6 +114,20 @@
           $('#node-config-input-unit').val('');
         }
       });
+      $("#node-config-input-historyCount").change(function () {
+        if ($(this).val() === '') {
+          $(this).val(0);
+        }
+      });
+      setTimeout(function() {
+        if ($('#node-config-input-historyCount').val() === '') {
+          $('#node-config-input-historyCount').val(0);
+        }
+        defaultNumberInput('#node-config-input-minPersistDelta', 1);
+        defaultNumberInput('#node-config-input-streamSaveInterval', 3000);
+        defaultNumberInput('#node-config-input-streamStableDelay', 1000);
+        updateStreamPersistenceVisibility();
+      }, 1);
 
       // Load the units dropdown. Response is a sorted array of units from convert-units.list()
       $.getJSON('shared-state/units', function(units) {
@@ -119,7 +164,7 @@
 <div id="node-config-input-valid" style="display:none; margin-bottom: 10px;" class="form-tips">
     Error:
     <i class="fa fa-tag fa-fw"></i>
-    State Name is available from the JS node, and must be a valid variable name.
+    State Name is used as both Node-RED state key and folder name. Use only ASCII letters, digits, and underscore, starting with a letter or underscore.
 </div>
 
 <div class="form-row">
@@ -128,13 +173,13 @@
 </div>
 
 <div class="form-row">
-    <label for="node-config-input-historyCount"><i class="fa fa-area-chart fa-fw"></i> History</label>
+    <label for="node-config-input-historyCount"><i class="fa fa-area-chart fa-fw"></i> History (legacy)</label>
     Keep <input style="width: 50px; text-align: right; margin:0 4px; padding: 0px 6px 0 0px;" type="number" min="0" id="node-config-input-historyCount"> items
 </div>
 
 <div class="form-tips">
     <span>Tip: <i style="width:24px; text-align:center" class="fa fa-area-chart"></i> 
-    Keep this number trim, as history is stored in memory and written to disk on state change.</span>
+    History is deprecated in this fork. New states default to 0, and the runtime keeps the compatibility field empty.</span>
 </div>
 
 <div class="form-row">
@@ -190,6 +235,47 @@
 </div>
 
 <div class="form-row">
+    <label for="node-config-input-defaultValue"><i class="fa fa-dot-circle-o fa-fw"></i> Default Value</label>
+    <input type="text" id="node-config-input-defaultValue" placeholder="type default">
+</div>
+
+<div class="form-tips">
+    <span>Tip: <i style="width:24px; text-align:center" class="fa fa-dot-circle-o"></i>
+    Used only when no valid persisted value exists. Leave empty for the type default: Number <code>0</code>, String <code>""</code>, Boolean <code>false</code>, Object <code>null</code>. Object values must be valid JSON when provided.</span>
+</div>
+
+<div class="form-row state-stream-values-row">
+    <label for="node-config-input-streamValues"><i class="fa fa-line-chart fa-fw"></i> Stream values</label>
+    <input type="checkbox" id="node-config-input-streamValues" style="display:inline-block; width:auto; vertical-align:middle;">
+    <span>Use stream persistence for numeric values</span>
+</div>
+
+<div class="state-stream-values-config">
+    <div class="form-row">
+        <label for="node-config-input-minPersistDelta"><i class="fa fa-arrows-h fa-fw"></i> Minimum delta</label>
+        <input type="number" style="width: 90px" min="0" step="any" id="node-config-input-minPersistDelta">
+        <span>value units</span>
+    </div>
+
+    <div class="form-row">
+        <label for="node-config-input-streamSaveInterval"><i class="fa fa-clock-o fa-fw"></i> Stream interval</label>
+        <input type="number" style="width: 100px" min="-1" id="node-config-input-streamSaveInterval">
+        <span>ms</span>
+    </div>
+
+    <div class="form-row">
+        <label for="node-config-input-streamStableDelay"><i class="fa fa-pause-circle-o fa-fw"></i> Stable delay</label>
+        <input type="number" style="width: 100px" min="-1" id="node-config-input-streamStableDelay">
+        <span>ms</span>
+    </div>
+
+    <div class="form-tips">
+        <span>Tip: <i style="width:24px; text-align:center" class="fa fa-line-chart"></i>
+        Stream persistence is for fast numeric signals. Use <code>-1</code> to disable Stream interval or Stable delay. Use <code>0</code> for immediate write when that rule matches.</span>
+    </div>
+</div>
+
+<div class="form-row">
     <label for="node-config-input-tags"><i class="fa fa-tags fa-fw"></i> Tags</label>
     <input type="text" id="node-config-input-tags" placeholder="comma,separated,tags">
 </div>
@@ -202,11 +288,46 @@
  <hr/>
  <h4>Elements</h4>
  <ul>
-   <li><b>State Name</b> - Name of the persistent shared state. This is the key used to identify the state, and must be a valid JavaScript variable name.</li>
+   <li><b>State Name</b> - Name of the persistent shared state. This is the key used to identify the state and the folder name used on disk. It must match <code>^[A-Za-z_][A-Za-z0-9_]*$</code>.</li>
    <li><b>Label</b> - The label that appears on the state node.</li>
-   <li><b>History</b> - Number of state changes to keep. Set to 0 for no state save or history.</li>
+   <li><b>History</b> - Deprecated compatibility setting. New nodes default to 0, state still saves normally, and the runtime keeps <code>history</code> empty.</li>
    <li><b>Saving interval</b> - Rate limit for saving state changes. Defaults to 0 when every state change is saved to disk.</li>
+   <li><b>Default Value</b> - Initial value used only when no valid persisted value exists. Blank uses the selected data type default.</li>
+   <li><b>Stream values</b> - Number-only persistence mode for high-frequency numeric signals. It adds minimum delta, stream interval, and stable delay controls.</li>
  </ul>
+ <h4>Stream Values</h4>
+ <p>
+   Stream values are intended for fast numeric signals where runtime updates
+   should keep flowing, but disk writes should be limited.
+ </p>
+ <ul>
+   <li><b>Minimum delta</b> - Minimum absolute change from the last persisted value before the delta rule can write.</li>
+   <li><b>Stream interval</b> - Minimum milliseconds between delta writes. Set to <code>-1</code> to disable delta writes. Set to <code>0</code> to write immediately when the delta rule matches.</li>
+   <li><b>Stable delay</b> - Milliseconds a changed value must remain current before the stable rule writes it. Set to <code>-1</code> to disable stable writes. Set to <code>0</code> to write immediately when the stable rule matches.</li>
+ </ul>
+ <p>
+   Runtime messages may override one or more stream settings with
+   <code>msg.streamPersistence</code>. For example:
+ </p>
+ <pre>{
+  "payload": 42,
+  "streamPersistence": {
+    "minimumDelta": 5
+  }
+}</pre>
+ <p>
+   Accepted runtime names are <code>minPersistDelta</code> /
+   <code>minimumDelta</code>, <code>streamSaveInterval</code> /
+   <code>streamInterval</code>, and <code>streamStableDelay</code> /
+   <code>stableDelay</code>. Omitted settings keep their current value.
+ </p>
+ <p>
+   The effective runtime/configured values can be read from global context as
+   <code>global.state.StateName.streamPersistence</code>, for example
+   <code>global.state.myHeading.streamPersistence</code>.
+   Treat <code>global.state.*</code> as read-only; direct writes bypass
+   validation, change events, checksums, and disk persistence.
+ </p>
  <h4>Optional Metadata</h4>
  Expand the state definition with metadata. This can be used to guarantee a data type, convert units, and provide tags to help find state nodes.
  <ul>
