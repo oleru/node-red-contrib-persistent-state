@@ -213,8 +213,9 @@
       function addVisibleStateLabels() {
         $('.red-ui-flow-node').each(function() {
           let node = $(this);
-          let icon = node.find('.red-ui-flow-node-icon-group text').first().text();
-          if (icon !== '\uf08b' && icon !== '\uf090') {
+          let icon = node.find('.red-ui-flow-node-icon-group text').first();
+          let iconRef = icon.attr('xlink:href') || icon.attr('href') || '';
+          if (iconRef !== 'font-awesome/fa-sign-out' && iconRef !== 'font-awesome/fa-sign-in') {
             return;
           }
           let label = node.find('.red-ui-flow-node-label-text').first().text();
