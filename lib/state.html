@@ -259,19 +259,19 @@
 
     <div class="form-row">
         <label for="node-config-input-streamSaveInterval"><i class="fa fa-clock-o fa-fw"></i> Stream interval</label>
-        <input type="number" style="width: 100px" min="0" id="node-config-input-streamSaveInterval">
+        <input type="number" style="width: 100px" min="-1" id="node-config-input-streamSaveInterval">
         <span>ms</span>
     </div>
 
     <div class="form-row">
         <label for="node-config-input-streamStableDelay"><i class="fa fa-pause-circle-o fa-fw"></i> Stable delay</label>
-        <input type="number" style="width: 100px" min="0" id="node-config-input-streamStableDelay">
+        <input type="number" style="width: 100px" min="-1" id="node-config-input-streamStableDelay">
         <span>ms</span>
     </div>
 
     <div class="form-tips">
         <span>Tip: <i style="width:24px; text-align:center" class="fa fa-line-chart"></i>
-        Stream persistence is for fast numeric signals. It writes by delta only when the interval allows it, and can write a value that remains stable through the stable delay even while identical samples keep arriving.</span>
+        Stream persistence is for fast numeric signals. Use <code>-1</code> to disable Stream interval or Stable delay. Use <code>0</code> for immediate write when that rule matches.</span>
     </div>
 </div>
 
@@ -295,6 +295,32 @@
    <li><b>Default Value</b> - Initial value used only when no valid persisted value exists. Blank uses the selected data type default.</li>
    <li><b>Stream values</b> - Number-only persistence mode for high-frequency numeric signals. It adds minimum delta, stream interval, and stable delay controls.</li>
  </ul>
+ <h4>Stream Values</h4>
+ <p>
+   Stream values are intended for fast numeric signals where runtime updates
+   should keep flowing, but disk writes should be limited.
+ </p>
+ <ul>
+   <li><b>Minimum delta</b> - Minimum absolute change from the last persisted value before the delta rule can write.</li>
+   <li><b>Stream interval</b> - Minimum milliseconds between delta writes. Set to <code>-1</code> to disable delta writes. Set to <code>0</code> to write immediately when the delta rule matches.</li>
+   <li><b>Stable delay</b> - Milliseconds a changed value must remain current before the stable rule writes it. Set to <code>-1</code> to disable stable writes. Set to <code>0</code> to write immediately when the stable rule matches.</li>
+ </ul>
+ <p>
+   Runtime messages may override one or more stream settings with
+   <code>msg.streamPersistence</code>. For example:
+ </p>
+ <pre>{
+  "payload": 42,
+  "streamPersistence": {
+    "minimumDelta": 5
+  }
+}</pre>
+ <p>
+   Accepted runtime names are <code>minPersistDelta</code> /
+   <code>minimumDelta</code>, <code>streamSaveInterval</code> /
+   <code>streamInterval</code>, and <code>streamStableDelay</code> /
+   <code>stableDelay</code>. Omitted settings keep their current value.
+ </p>
  <h4>Optional Metadata</h4>
  Expand the state definition with metadata. This can be used to guarantee a data type, convert units, and provide tags to help find state nodes.
  <ul>

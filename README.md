@@ -175,9 +175,10 @@ When enabled, the state node:
   write interval;
 - writes a changed value after `Stable delay` when the value has remained the
   same through the delay period, even if identical samples keep arriving;
-- treats `Stream interval = 0` as disabled periodic delta persistence, useful
+- treats `Stream interval = -1` as disabled periodic delta persistence, useful
   when only stable-value persistence should write to disk;
-- treats `Stable delay = 0` as disabled stable-value persistence.
+- treats `Stable delay = -1` as disabled stable-value persistence;
+- treats `0` as immediate write when that rule matches.
 
 Stream persistence parameters can be tuned at runtime without changing the
 state value payload. Send overrides on the message that updates the state:
@@ -187,7 +188,7 @@ state value payload. Send overrides on the message that updates the state:
   "payload": 42,
   "streamPersistence": {
     "minPersistDelta": 5,
-    "streamSaveInterval": 0,
+    "streamSaveInterval": -1,
     "streamStableDelay": 1500
   }
 }
@@ -195,7 +196,8 @@ state value payload. Send overrides on the message that updates the state:
 
 The shorter aliases `minimumDelta`, `streamInterval`, and `stableDelay` are
 also accepted. Runtime overrides stay active for that `shared-state` node until
-the node is redeployed or restarted.
+the node is redeployed or restarted. Only include the parameters that should
+change; omitted parameters keep their current runtime/configured value.
 
 ## Upstream README
 

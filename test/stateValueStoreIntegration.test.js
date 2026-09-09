@@ -634,7 +634,7 @@ test('stream values below minimum delta update runtime without persisting', asyn
     streamValues: true,
     minPersistDelta: '5',
     streamSaveInterval: '0',
-    streamStableDelay: '0',
+    streamStableDelay: '-1',
   }));
   await waitForInit();
 
@@ -667,14 +667,14 @@ test('stream values persist when minimum delta is reached and interval allows it
   assert.equal(node.lastPersistedValue, 5);
 });
 
-test('stream interval zero disables delta writes and waits for stable value', async function(t) {
+test('stream interval minus one disables delta writes and waits for stable value', async function(t) {
   let stateDir = await makeStateDir(t);
   let StateCtor = loadStateConstructor();
   let node = new StateCtor(makeConfig(stateDir, {
     defaultValue: '0',
     streamValues: true,
     minPersistDelta: '1',
-    streamSaveInterval: '0',
+    streamSaveInterval: '-1',
     streamStableDelay: '20',
   }));
   await waitForInit();
@@ -706,6 +706,25 @@ test('stream values persist a small stable value after the stable delay', async 
 
   await node.update(3, {});
   await new Promise((resolve) => setTimeout(resolve, 45));
+
+  let valueDir = persistentStore.getValueDir(stateDir, 'myNumber');
+  let recovered = await persistentStore.recover({valueDir, name: 'myNumber', type: 'num'});
+  assert.equal(recovered.payload.value, 3);
+});
+
+test('stream stable delay zero writes immediately when stable rule matches', async function(t) {
+  let stateDir = await makeStateDir(t);
+  let StateCtor = loadStateConstructor();
+  let node = new StateCtor(makeConfig(stateDir, {
+    defaultValue: '0',
+    streamValues: true,
+    minPersistDelta: '5',
+    streamSaveInterval: '-1',
+    streamStableDelay: '0',
+  }));
+  await waitForInit();
+
+  await node.update(3, {});
 
   let valueDir = persistentStore.getValueDir(stateDir, 'myNumber');
   let recovered = await persistentStore.recover({valueDir, name: 'myNumber', type: 'num'});
@@ -748,13 +767,13 @@ test('stream persistence accepts runtime parameter overrides from msg.streamPers
   await node.update(3, {
     streamPersistence: {
       minimumDelta: 2,
-      streamInterval: 0,
+      streamInterval: -1,
       stableDelay: 20,
     },
   });
 
   assert.equal(node.getMinPersistDelta(), 2);
-  assert.equal(node.getStreamSaveInterval(), 0);
+  assert.equal(node.getStreamSaveInterval(), -1);
   assert.equal(node.getStreamStableDelay(), 20);
 
   await new Promise((resolve) => setTimeout(resolve, 45));
@@ -762,4 +781,27 @@ test('stream persistence accepts runtime parameter overrides from msg.streamPers
   let valueDir = persistentStore.getValueDir(stateDir, 'myNumber');
   let recovered = await persistentStore.recover({valueDir, name: 'myNumber', type: 'num'});
   assert.equal(recovered.payload.value, 3);
+});
+
+test('stream persistence runtime overrides can update only minimum delta', async function(t) {
+  let stateDir = await makeStateDir(t);
+  let StateCtor = loadStateConstructor();
+  let node = new StateCtor(makeConfig(stateDir, {
+    defaultValue: '0',
+    streamValues: true,
+    minPersistDelta: '100',
+    streamSaveInterval: '3000',
+    streamStableDelay: '1000',
+  }));
+  await waitForInit();
+
+  await node.update(3, {
+    streamPersistence: {
+      minimumDelta: 2,
+    },
+  });
+
+  assert.equal(node.getMinPersistDelta(), 2);
+  assert.equal(node.getStreamSaveInterval(), 3000);
+  assert.equal(node.getStreamStableDelay(), 1000);
 });
