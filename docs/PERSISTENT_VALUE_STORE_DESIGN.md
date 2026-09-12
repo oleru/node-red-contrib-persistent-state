@@ -25,7 +25,7 @@ upstream file compatibility. It still preserves:
 - Node-RED type names: `shared-state`, `get-shared-state`, `set-shared-state`.
 - Existing flow configuration nodes and references.
 - Existing `msg.payload` and `msg.state` shape for readers.
-- Existing `global.state.<name>` shape as far as practical.
+- Existing `global.get("state")[stateName]` shape as far as practical.
 - Existing type conversion, range, unit and label metadata.
 
 The implementation may add internal metadata fields, status messages and log

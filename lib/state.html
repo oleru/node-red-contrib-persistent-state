@@ -322,10 +322,10 @@
    <code>stableDelay</code>. Omitted settings keep their current value.
  </p>
  <p>
-   The effective runtime/configured values can be read from global context as
-   <code>global.state.StateName.streamPersistence</code>, for example
-   <code>global.state.myHeading.streamPersistence</code>.
-   Treat <code>global.state.*</code> as read-only; direct writes bypass
+   In a Function node, the effective runtime/configured values can be read through the global context API as
+   <code>global.get("state").StateName.streamPersistence</code>, for example
+   <code>global.get("state").myHeading.streamPersistence</code>.
+   Treat <code>global.get("state")</code> as read-only; direct writes bypass
    validation, change events, checksums, and disk persistence.
  </p>
  <h4>Optional Metadata</h4>

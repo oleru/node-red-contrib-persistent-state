@@ -1,3 +1,17 @@
+0.6.1 - Unreleased
+==================
+
+  * Correct global context reads to use `global.get("state")` in the README,
+    node help, and technical documentation.
+  * Document value reads in Function nodes and custom node implementations,
+    including variable state names and initialization requirements.
+  * Replace a pending stability timer when the stream minimum-delta rule
+    takes over, preventing early writes during continued movement.
+  * Measure stream write intervals from the completed write rather than the
+    timestamp of the saved sample.
+  * Add regression coverage for the delta transition, 35 seconds of continuous
+    movement, final-value persistence, and five seconds of unchanged idle files.
+
 0.6.0 - Unreleased
 ==================
 

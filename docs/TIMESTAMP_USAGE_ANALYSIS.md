@@ -76,7 +76,7 @@ File: `lib/state.js`
 This object is used in:
 
 - persisted state file writes;
-- `global.state.<name>`;
+- `global.get("state")[stateName]`;
 - `msg.state` emitted by get/set nodes.
 
 So `timestamp` and `history` are part of the public compatibility surface.
@@ -149,7 +149,7 @@ value at index `0`, then trimming older tail entries.
 
 File: `lib/state.js`
 
-If `global.state.<name>` already exists, startup calls:
+If `global.get("state")[stateName]` already exists, startup calls:
 
 ```js
 node.initFromObj(thisState);

@@ -140,9 +140,11 @@
    </li>
  </ul>
  <p>
-   The same state view is also available in global context as
-   <code>global.state.StateName</code>, for example
-   <code>global.state.myHeading</code>. Read from this object, but do not write
+   In a Function node, the same state view is available through the global context API as
+   <code>global.get("state").StateName</code>, for example
+   <code>global.get("state").myHeading</code>. Read the current value with
+   <code>global.get("state").myHeading.value</code> once the state has initialized.
+   Read from this object, but do not write
    directly to it.
  </p>
 

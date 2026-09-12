@@ -752,6 +752,86 @@ test('stream values rate-limit writes and persist the latest queued value', asyn
   assert.equal(recovered.payload.value, 4);
 });
 
+async function makeTimedStreamNode(t) {
+  let stateDir = await makeStateDir(t);
+  let StateCtor = loadStateConstructor();
+  let node = new StateCtor(makeConfig(stateDir, {
+    defaultValue: '0',
+    streamValues: true,
+    minPersistDelta: '3',
+    streamSaveInterval: '3000',
+    streamStableDelay: '1000',
+  }));
+  await waitForInit();
+  assert.equal(node.initialized, true);
+  t.after(() => node.emit('close'));
+  // Advance policy time deterministically while retaining real generation writes.
+  t.mock.timers.enable({apis: ['Date', 'setTimeout'], now: Date.now()});
+  node.lastPersistedTimestamp = Date.now();
+  let writes = [];
+  let writeSnapshot = node.writeStateSnapshot.bind(node);
+  let pendingWrites = [];
+  node.writeStateSnapshot = function(snapshot) {
+    writes.push({at: Date.now(), value: snapshot.value});
+    let pending = writeSnapshot(snapshot);
+    pendingWrites.push(pending);
+    return pending;
+  };
+  async function advance(ms) {
+    t.mock.timers.tick(ms);
+    await Promise.all(pendingWrites.splice(0));
+    // Drain the async persistence callback before the next sample.
+    await new Promise(resolve => setImmediate(resolve));
+  }
+  return {node, writes, advance};
+}
+
+test('stream delta crossing replaces a pending stability timer', async function(t) {
+  let {node, writes, advance} = await makeTimedStreamNode(t);
+  let initialSequence = node.sequence;
+  await advance(100);
+  await node.update(1, {}); // Stability deadline: 1100 ms.
+  await advance(400);
+  await node.update(3, {}); // Delta reached; interval deadline: 3000 ms.
+  await advance(599);
+  assert.equal(writes.length, 0);
+  await advance(1);
+  assert.equal(writes.length, 0, 'obsolete stability timer must not write');
+  await advance(1899);
+  await node.update(4, {});
+  assert.equal(writes.length, 0);
+  await advance(1);
+  assert.deepEqual(writes.map(write => write.value), [4]);
+  assert.equal(node.sequence, initialSequence + 1);
+});
+
+test('continuous stream respects the interval then persists its final value and stays idle', async function(t) {
+  let {node, writes, advance} = await makeTimedStreamNode(t);
+  let initialSequence = node.sequence;
+  for (let sample = 1; sample <= 350; sample++) {
+    await advance(100);
+    await node.update(sample * 0.5, {});
+  }
+  assert.ok(writes.length >= 11 && writes.length <= 12, 'about 12 writes in 35 seconds');
+  for (let i = 1; i < writes.length; i++) {
+    assert.ok(writes[i].at - writes[i - 1].at >= 3000,
+      'periodic writes must be at least 3000 ms apart');
+  }
+  await advance(3000);
+  let recovered = await persistentStore.recover({valueDir: node.valueDir, name: node.name, type: 'num'});
+  assert.equal(recovered.payload.value, 175);
+  assert.equal(node.sequence, initialSequence + writes.length);
+  let paths = persistentStore.getStorePaths(node.valueDir);
+  let before = await Promise.all([fs.readFile(paths.active), fs.readFile(paths.previous)]);
+  let settledCount = writes.length;
+  for (let i = 0; i < 50; i++) {
+    await advance(100);
+    await node.update(175, {});
+  }
+  assert.equal(writes.length, settledCount);
+  assert.deepEqual(await Promise.all([fs.readFile(paths.active), fs.readFile(paths.previous)]), before);
+});
+
 test('stream persistence accepts runtime parameter overrides from msg.streamPersistence', async function(t) {
   let stateDir = await makeStateDir(t);
   let StateCtor = loadStateConstructor();
