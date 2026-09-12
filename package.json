@@ -4,7 +4,7 @@
   "contributors": [
     "node-red-contrib-persistent-state maintainers"
   ],
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Persistent shared-state nodes for Node-RED with hardened value storage",
   "license": "MIT",
   "homepage": "https://github.com/oleru/node-red-contrib-persistent-state",

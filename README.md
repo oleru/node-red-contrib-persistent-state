@@ -48,13 +48,13 @@ To replace the original package:
 
 ```sh
 npm remove node-red-contrib-state
-npm install github:oleru/node-red-contrib-persistent-state#v0.6.0
+npm install github:oleru/node-red-contrib-persistent-state#v0.6.1
 ```
 
 For SSH-based installation:
 
 ```sh
-npm install git+ssh://git@github.com/oleru/node-red-contrib-persistent-state.git#v0.6.0
+npm install git+ssh://git@github.com/oleru/node-red-contrib-persistent-state.git#v0.6.1
 ```
 
 Restart Node-RED after installation.
@@ -100,7 +100,7 @@ write `<sharedStateDir>/factory-defaults.json`, generate a template from active
 `shared-state` variables, and apply selected defaults by an explicit JSON
 command with `confirm: true`.
 
-`v0.6.0` development adds number-only `Stream values` persistence controls for
+`v0.6.0` adds number-only `Stream values` persistence controls for
 fast-changing numeric signals. The runtime value and change events still update
 on every accepted change, but disk writes can be gated by minimum value delta,
 stream write interval, and stable-value delay.
@@ -178,6 +178,13 @@ When enabled, the state node:
 - treats `Stable delay = -1` as disabled stable-value persistence;
 - treats `0` as immediate write when that rule matches.
 
+`v0.6.1` fixes the transition from small changes to the minimum-delta rule:
+the pending stability timer is replaced by the remaining stream interval.
+Stream intervals are measured from the completed write, so an older sample
+timestamp cannot shorten the next interval. While the minimum-delta rule is
+active, the latest value is saved when that interval expires; below the delta,
+the stability delay is restarted on each actual value change.
+
 Stream persistence parameters can be tuned at runtime without changing the
 state value payload. Send overrides on the message that updates the state:
 
@@ -197,14 +204,14 @@ also accepted. Runtime overrides stay active for that `shared-state` node until
 the node is redeployed or restarted. Only include the parameters that should
 change; omitted parameters keep their current runtime/configured value.
 
-The effective stream settings can be read from global context:
+The effective stream settings can be read from global context in a Function node:
 
 ```js
-global.state.StateName.streamPersistence
-global.state["StateName"].streamPersistence
+global.get("state").StateName.streamPersistence
+global.get("state")["StateName"].streamPersistence
 ```
 
-Treat `global.state.*` as a read-only state view. Reading `value`, `prev`,
+Treat `global.get("state")` as a read-only state view. Reading `value`, `prev`,
 `timestamp`, `persistenceError`, `config`, and `streamPersistence` is supported,
 but writing directly to global context bypasses type conversion, validation,
 change events, sequence updates, checksums, and disk persistence. Change values
@@ -317,11 +324,23 @@ custom nodes needing to use logical state to perform their task.
 The keys in the _state_ object are the state names, and the values are the same structure
 as the _msg.state_ object defined in the getState node above.
 
-An example using the function node:
+Use the Node-RED context API to read shared state. Direct property access on
+`global` does not reliably read the context store.
 
-```
+An example using the Function node (after the state has initialized):
+
+```js
 let isRoomOccupied = global.get("state").isRoomOccupied.value;
 ```
+
+For a state name held in a variable, use `global.get("state")[stateName].value`.
+In a custom node's JavaScript implementation, use
+`node.context().global.get("state")[stateName].value`.
+These examples assume the named state has initialized; check that the state
+exists before reading `.value` if it may be missing.
+
+See the [Node-RED context API](https://nodered.org/docs/user-guide/writing-functions#storing-data)
+for Function nodes and [custom node context](https://nodered.org/docs/creating-nodes/context).
 
 Another useful way to obtain shared state is to add it to a message using the _Change_ node:
 
