@@ -1,4 +1,4 @@
-0.6.1 - Unreleased
+0.6.1 - 2026-09-12
 ==================
 
   * Correct global context reads to use `global.get("state")` in the README,
@@ -12,7 +12,7 @@
   * Add regression coverage for the delta transition, 35 seconds of continuous
     movement, final-value persistence, and five seconds of unchanged idle files.
 
-0.6.0 - Unreleased
+0.6.0 - 2026-09-09
 ==================
 
   * Start next development cycle for high-frequency stream persistence controls,

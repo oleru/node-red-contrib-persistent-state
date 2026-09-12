@@ -100,7 +100,7 @@ write `<sharedStateDir>/factory-defaults.json`, generate a template from active
 `shared-state` variables, and apply selected defaults by an explicit JSON
 command with `confirm: true`.
 
-`v0.6.0` development adds number-only `Stream values` persistence controls for
+`v0.6.0` adds number-only `Stream values` persistence controls for
 fast-changing numeric signals. The runtime value and change events still update
 on every accepted change, but disk writes can be gated by minimum value delta,
 stream write interval, and stable-value delay.
